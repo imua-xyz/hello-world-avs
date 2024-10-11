@@ -7,7 +7,6 @@ import (
 	"github.com/ExocoreNetwork/exocore-avs/core"
 	"github.com/ExocoreNetwork/exocore-avs/core/chainio"
 	"github.com/ExocoreNetwork/exocore-avs/core/config"
-	"github.com/ExocoreNetwork/exocore-sdk/chainio/clients"
 	sdkclients "github.com/ExocoreNetwork/exocore-sdk/chainio/clients"
 	"github.com/ExocoreNetwork/exocore-sdk/logging"
 	"github.com/ExocoreNetwork/exocore-sdk/services/avsregistry"
@@ -153,10 +152,10 @@ func (agg *Aggregator) sendAggregatedResponseToContract(blsAggServiceResp blsagg
 
 // sendNewTask sends a new task to the task manager contract, and updates the Task dict struct
 // with the information of operators opted into quorum 0 at the block of task creation.
-func (agg *Aggregator) sendNewTask(numToSquare *big.Int) error {
-	agg.logger.Info("Aggregator sending new task", "numberToSquare", numToSquare)
-	// Send number to square to the task manager contract
-	newTask, taskIndex, err := agg.avsWriter.SendNewTaskNumberToSquare(context.Background(), numToSquare, types.QuorumThresholdNumerator, types.QuorumNumbers)
+func (agg *Aggregator) sendNewTask(numOneToSum, numTwoToSum *big.Int) error {
+	agg.logger.Info("Aggregator sending new task", "numberOneToSum:", numOneToSum, "numberTwoToSum:", numTwoToSum)
+	// Send number to sum to the task manager contract
+	newTask, taskIndex, err := agg.avsWriter.SendNewTaskNumberToSum(context.Background(), numOneToSum, numTwoToSum, types.ThresholdNumerator)
 	if err != nil {
 		agg.logger.Error("Aggregator failed to send number to square", "err", err)
 		return err

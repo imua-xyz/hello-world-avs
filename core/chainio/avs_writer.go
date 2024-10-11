@@ -19,11 +19,11 @@ import (
 type AvsWriterer interface {
 	avsregistry.AvsRegistryWriter
 
-	SendNewTaskNumberToSquare(
+	SendNewTaskNumberToSum(
 		ctx context.Context,
-		numToSquare *big.Int,
-		quorumThresholdPercentage uint32,
-		quorumNumbers []byte,
+		numOneToSum *big.Int,
+		numTwoToSum *big.Int,
+		thresholdPercentage uint32,
 	) (cstaskmanager.IIncredibleSquaringTaskManagerTask, uint32, error)
 	SendAggregatedResponse(ctx context.Context,
 		task cstaskmanager.IIncredibleSquaringTaskManagerTask,

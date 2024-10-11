@@ -1,6 +1,6 @@
 package types
 
-const QuorumThresholdNumerator = uint32(100)
+const ThresholdNumerator = uint32(100)
 
 var QuorumNumbers = []byte{0}
 
