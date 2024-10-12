@@ -7,6 +7,7 @@ import (
 	"github.com/ExocoreNetwork/exocore-avs/core"
 	"github.com/ExocoreNetwork/exocore-avs/core/chainio"
 	"github.com/ExocoreNetwork/exocore-avs/core/config"
+	"github.com/ExocoreNetwork/exocore-sdk/chainio/clients"
 	sdkclients "github.com/ExocoreNetwork/exocore-sdk/chainio/clients"
 	"github.com/ExocoreNetwork/exocore-sdk/logging"
 	"github.com/ExocoreNetwork/exocore-sdk/services/avsregistry"

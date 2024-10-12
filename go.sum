@@ -1,6 +1,8 @@
 github.com/BurntSushi/toml v1.3.2/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
 github.com/ExocoreNetwork/exocore-sdk v0.0.0-20240807095250-aea825d6b4ee h1:zoIg7ggwWP8xgA3ujpK+myfv6/trbClKU++4IO+UKxo=
 github.com/ExocoreNetwork/exocore-sdk v0.0.0-20240807095250-aea825d6b4ee/go.mod h1:iEPkL3/6e8IfnqbMXVYEJ1n057C0bOaE60jNmwEZk/A=
+github.com/ExocoreNetwork/exocore-sdk v0.0.0-20241012051138-b65211b1ce87 h1:4Br1hv2GZalzN4lvSgC5pVS2R5GQ9fQqwWFev+YWaLs=
+github.com/ExocoreNetwork/exocore-sdk v0.0.0-20241012051138-b65211b1ce87/go.mod h1:Ia53xnAaEkPVPjnh/8B4mVz+vSh4cAIpz5XmxljzQZM=
 github.com/Microsoft/go-winio v0.6.1/go.mod h1:LRdKpFKfdobln8UmuiYcKPot9D2v6svN5+sAH+4kjUM=
 github.com/StackExchange/wmi v1.2.1/go.mod h1:rcmrprowKIVzvc+NUiLncP2uuArMWLCbu9SBzvHz7e8=
 github.com/bits-and-blooms/bitset v1.10.0/go.mod h1:7hO7Gc7Pp1vODcmWvKMRA9BNmbv6a/7QIWpPxHddWR8=

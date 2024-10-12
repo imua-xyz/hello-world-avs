@@ -5,7 +5,7 @@ go 1.22
 toolchain go1.22.6
 
 require (
-	github.com/ExocoreNetwork/exocore-sdk v0.0.0-20240807095250-aea825d6b4ee
+	github.com/ExocoreNetwork/exocore-sdk v0.0.0-20241012051138-b65211b1ce87
 	github.com/ethereum/go-ethereum v1.13.8
 	github.com/urfave/cli v1.22.14
 	golang.org/x/crypto v0.17.0
