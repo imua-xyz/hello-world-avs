@@ -1394,7 +1394,7 @@ func (_ContractIncredibleSquaringTaskManager *ContractIncredibleSquaringTaskMana
 
 // ContractIncredibleSquaringTaskManagerNewTaskCreatedIterator is returned from FilterNewTaskCreated and is used to iterate over the raw logs and unpacked data for NewTaskCreated events raised by the ContractIncredibleSquaringTaskManager contract.
 type ContractIncredibleSquaringTaskManagerNewTaskCreatedIterator struct {
-	Event *ContractIncredibleSquaringTaskManagerNewTaskCreated // Event containing the contract specifics and raw log
+	Event *ContractIncredibleSumTaskManagerNewTaskCreated // Event containing the contract specifics and raw log
 
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
@@ -1417,7 +1417,7 @@ func (it *ContractIncredibleSquaringTaskManagerNewTaskCreatedIterator) Next() bo
 	if it.done {
 		select {
 		case log := <-it.logs:
-			it.Event = new(ContractIncredibleSquaringTaskManagerNewTaskCreated)
+			it.Event = new(ContractIncredibleSumTaskManagerNewTaskCreated)
 			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 				it.fail = err
 				return false
@@ -1432,7 +1432,7 @@ func (it *ContractIncredibleSquaringTaskManagerNewTaskCreatedIterator) Next() bo
 	// Iterator still in progress, wait for either a data or an error event
 	select {
 	case log := <-it.logs:
-		it.Event = new(ContractIncredibleSquaringTaskManagerNewTaskCreated)
+		it.Event = new(ContractIncredibleSumTaskManagerNewTaskCreated)
 		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 			it.fail = err
 			return false
@@ -1459,8 +1459,8 @@ func (it *ContractIncredibleSquaringTaskManagerNewTaskCreatedIterator) Close() e
 	return nil
 }
 
-// ContractIncredibleSquaringTaskManagerNewTaskCreated represents a NewTaskCreated event raised by the ContractIncredibleSquaringTaskManager contract.
-type ContractIncredibleSquaringTaskManagerNewTaskCreated struct {
+// ContractIncredibleSumTaskManagerNewTaskCreated represents a NewTaskCreated event raised by the ContractIncredibleSquaringTaskManager contract.
+type ContractIncredibleSumTaskManagerNewTaskCreated struct {
 	TaskIndex uint32
 	Task      IIncredibleSquaringTaskManagerTask
 	Raw       types.Log // Blockchain specific contextual infos
@@ -1486,7 +1486,7 @@ func (_ContractIncredibleSquaringTaskManager *ContractIncredibleSquaringTaskMana
 // WatchNewTaskCreated is a free log subscription operation binding the contract event 0x1695b8d06ec800b4615e745cfb5bd00c1f2875615d42925c3b5afa543bb24c48.
 //
 // Solidity: event NewTaskCreated(uint32 indexed taskIndex, (uint256,uint32,bytes,uint32) task)
-func (_ContractIncredibleSquaringTaskManager *ContractIncredibleSquaringTaskManagerFilterer) WatchNewTaskCreated(opts *bind.WatchOpts, sink chan<- *ContractIncredibleSquaringTaskManagerNewTaskCreated, taskIndex []uint32) (event.Subscription, error) {
+func (_ContractIncredibleSquaringTaskManager *ContractIncredibleSquaringTaskManagerFilterer) WatchNewTaskCreated(opts *bind.WatchOpts, sink chan<- *ContractIncredibleSumTaskManagerNewTaskCreated, taskIndex []uint32) (event.Subscription, error) {
 
 	var taskIndexRule []interface{}
 	for _, taskIndexItem := range taskIndex {
@@ -1503,7 +1503,7 @@ func (_ContractIncredibleSquaringTaskManager *ContractIncredibleSquaringTaskMana
 			select {
 			case log := <-logs:
 				// New log arrived, parse the event and forward to the user
-				event := new(ContractIncredibleSquaringTaskManagerNewTaskCreated)
+				event := new(ContractIncredibleSumTaskManagerNewTaskCreated)
 				if err := _ContractIncredibleSquaringTaskManager.contract.UnpackLog(event, "NewTaskCreated", log); err != nil {
 					return err
 				}
@@ -1528,8 +1528,8 @@ func (_ContractIncredibleSquaringTaskManager *ContractIncredibleSquaringTaskMana
 // ParseNewTaskCreated is a log parse operation binding the contract event 0x1695b8d06ec800b4615e745cfb5bd00c1f2875615d42925c3b5afa543bb24c48.
 //
 // Solidity: event NewTaskCreated(uint32 indexed taskIndex, (uint256,uint32,bytes,uint32) task)
-func (_ContractIncredibleSquaringTaskManager *ContractIncredibleSquaringTaskManagerFilterer) ParseNewTaskCreated(log types.Log) (*ContractIncredibleSquaringTaskManagerNewTaskCreated, error) {
-	event := new(ContractIncredibleSquaringTaskManagerNewTaskCreated)
+func (_ContractIncredibleSquaringTaskManager *ContractIncredibleSquaringTaskManagerFilterer) ParseNewTaskCreated(log types.Log) (*ContractIncredibleSumTaskManagerNewTaskCreated, error) {
+	event := new(ContractIncredibleSumTaskManagerNewTaskCreated)
 	if err := _ContractIncredibleSquaringTaskManager.contract.UnpackLog(event, "NewTaskCreated", log); err != nil {
 		return nil, err
 	}
