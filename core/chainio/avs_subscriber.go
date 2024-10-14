@@ -1,80 +1,57 @@
 package chainio
 
 import (
-	cstaskmanager "github.com/ExocoreNetwork/exocore-avs/bindings/AvsTaskManager"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 
-	"github.com/ExocoreNetwork/exocore-sdk/chainio/clients/eth"
-	sdklogging "github.com/ExocoreNetwork/exocore-sdk/logging"
-
-	"github.com/ExocoreNetwork/exocore-avs/core/config"
+	avssub "github.com/ExocoreNetwork/exocore-avs/contracts/bindings/avs"
+	"github.com/ExocoreNetwork/exocore-avs/core/chainio/eth"
+	"github.com/ExocoreNetwork/exocore-sdk/logging"
 )
 
-type AvsSubscriberer interface {
-	SubscribeToNewTasks(newTaskCreatedChan chan *cstaskmanager.ContractIncredibleSumTaskManagerNewTaskCreated) event.Subscription
-	SubscribeToTaskResponses(taskResponseLogs chan *cstaskmanager.ContractIncredibleSquaringTaskManagerTaskResponded) event.Subscription
-	ParseTaskResponded(rawLog types.Log) (*cstaskmanager.ContractIncredibleSquaringTaskManagerTaskResponded, error)
+type AvsRegistrySubscriber interface {
+	SubscribeToNewTasks(newTaskCreatedChan chan *avssub.ContractavsserviceTaskCreated) event.Subscription
 }
 
-// AvsSubscriber Subscribers use a ws connection instead of http connection like Readers
-// kind of stupid that the geth client doesn't have a unified interface for both...
-// it takes a single url, so the bindings, even though they have watcher functions, those can't be used
-// with the http connection... seems very stupid. Am I missing something?
-type AvsSubscriber struct {
-	AvsContractBindings *AvsManagersBindings
-	logger              sdklogging.Logger
+type AvsRegistryChainSubscriber struct {
+	logger logging.Logger
+	avssub avssub.Contractavsservice
 }
 
-func BuildAvsSubscriberFromConfig(config *config.Config) (*AvsSubscriber, error) {
-	return BuildAvsSubscriber(
-		config.AvsRegistryCoordinatorAddr,
-		config.OperatorStateRetrieverAddr,
-		config.EthWsClient,
-		config.Logger,
-	)
+// forces EthSubscriber to implement the chainio.Subscriber interface
+var _ AvsRegistrySubscriber = (*AvsRegistryChainSubscriber)(nil)
+
+func NewAvsRegistryChainSubscriber(
+	avssub avssub.Contractavsservice,
+	logger logging.Logger,
+) (*AvsRegistryChainSubscriber, error) {
+	return &AvsRegistryChainSubscriber{
+		logger: logger,
+		avssub: avssub,
+	}, nil
 }
 
-func BuildAvsSubscriber(registryCoordinatorAddr, blsOperatorStateRetrieverAddr gethcommon.Address, ethclient eth.EthClient, logger sdklogging.Logger) (*AvsSubscriber, error) {
-	avsContractBindings, err := NewAvsManagersBindings(registryCoordinatorAddr, blsOperatorStateRetrieverAddr, ethclient, logger)
+func BuildAvsRegistryChainSubscriber(
+	avssubAddr common.Address,
+	ethWsClient eth.EthClient,
+	logger logging.Logger,
+) (*AvsRegistryChainSubscriber, error) {
+	avssub, err := avssub.NewContractavsservice(avssubAddr, ethWsClient)
 	if err != nil {
-		logger.Errorf("Failed to create contract bindings", "err", err)
+		logger.Error("Failed to create BLSApkRegistry contract", "err", err)
 		return nil, err
 	}
-	return NewAvsSubscriber(avsContractBindings, logger), nil
+	return NewAvsRegistryChainSubscriber(*avssub, logger)
 }
 
-func NewAvsSubscriber(avsContractBindings *AvsManagersBindings, logger sdklogging.Logger) *AvsSubscriber {
-	return &AvsSubscriber{
-		AvsContractBindings: avsContractBindings,
-		logger:              logger,
-	}
-}
-
-func (s *AvsSubscriber) SubscribeToNewTasks(newTaskCreatedChan chan *cstaskmanager.ContractIncredibleSumTaskManagerNewTaskCreated) event.Subscription {
-	sub, err := s.AvsContractBindings.TaskManager.WatchNewTaskCreated(
-		&bind.WatchOpts{}, newTaskCreatedChan, nil,
+func (s *AvsRegistryChainSubscriber) SubscribeToNewTasks(newTaskCreatedChan chan *avssub.ContractavsserviceTaskCreated) event.Subscription {
+	sub, err := s.avssub.WatchTaskCreated(
+		&bind.WatchOpts{}, newTaskCreatedChan,
 	)
 	if err != nil {
-		s.logger.Error("Failed to subscribe to new TaskManager tasks", "err", err)
+		s.logger.Error("Failed to subscribe to new  tasks", "err", err)
 	}
 	s.logger.Infof("Subscribed to new TaskManager tasks")
 	return sub
-}
-
-func (s *AvsSubscriber) SubscribeToTaskResponses(taskResponseChan chan *cstaskmanager.ContractIncredibleSquaringTaskManagerTaskResponded) event.Subscription {
-	sub, err := s.AvsContractBindings.TaskManager.WatchTaskResponded(
-		&bind.WatchOpts{}, taskResponseChan,
-	)
-	if err != nil {
-		s.logger.Error("Failed to subscribe to TaskResponded events", "err", err)
-	}
-	s.logger.Infof("Subscribed to TaskResponded events")
-	return sub
-}
-
-func (s *AvsSubscriber) ParseTaskResponded(rawLog types.Log) (*cstaskmanager.ContractIncredibleSquaringTaskManagerTaskResponded, error) {
-	return s.AvsContractBindings.TaskManager.ContractIncredibleSquaringTaskManagerFilterer.ParseTaskResponded(rawLog)
 }

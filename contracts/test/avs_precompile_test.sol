@@ -1,16 +1,8 @@
 pragma solidity >=0.8.17;
-import "./IAVSManager.sol" as avs;
-contract AvsServiceContract {
-    address constant BLS_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000809;
-    address public owner;
-    constructor() {
-        owner = msg.sender;
-    }
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Only contract owner can call this function.");
-        _;
-    }
+import "./iavs.sol" as avs;
+
+contract AVSManagerCaller {
 
     function registerAVS(
         string memory avsName,
@@ -26,7 +18,6 @@ contract AvsServiceContract {
         uint64[] memory params
     ) public returns (bool) {
         bool success =  avs.AVSMANAGER_CONTRACT.registerAVS(
-            msg.sender,
             avsName,
             minStakeAmount,
             taskAddr,
@@ -57,7 +48,6 @@ contract AvsServiceContract {
         uint64[] memory params
     ) public returns (bool) {
         bool success =  avs.AVSMANAGER_CONTRACT.updateAVS(
-            msg.sender,
             avsName,
             minStakeAmount,
             taskAddr,
@@ -77,7 +67,6 @@ contract AvsServiceContract {
 
     function deregisterAVS(string memory avsName) public returns (bool) {
         bool success = avs.AVSMANAGER_CONTRACT.deregisterAVS(
-            msg.sender,
             avsName
         );
         return success;
@@ -86,7 +75,7 @@ contract AvsServiceContract {
     function registerOperatorToAVS() public returns (bool) {
 
         bool success = avs.AVSMANAGER_CONTRACT.registerOperatorToAVS(
-        msg.sender
+
         );
         return success;
     }
@@ -94,23 +83,61 @@ contract AvsServiceContract {
     function deregisterOperatorFromAVS() public returns (bool) {
 
         bool success = avs.AVSMANAGER_CONTRACT.deregisterOperatorFromAVS(
-        msg.sender
+
+        );
+        return success;
+    }
+
+    function createTask(
+        string memory name,
+        bytes memory data,
+        string memory taskId,
+        uint64 taskResponsePeriod,
+        uint64 taskChallengePeriod,
+        uint64 thresholdPercentage
+    ) public returns (bool) {
+        bool success = avs.AVSMANAGER_CONTRACT.createTask(
+            name,
+            data,
+            taskId,
+            taskResponsePeriod,
+            taskChallengePeriod,
+            thresholdPercentage
+        );
+        return success;
+    }
+
+    function submitProof(
+        string memory taskId,
+        string memory taskContractAddress,
+        string memory aggregator,
+        string memory avsAddress,
+        bytes memory operatorStatus
+    ) public returns (bool) {
+        bool success = avs.AVSMANAGER_CONTRACT.submitProof(
+            taskId,
+            taskContractAddress,
+            aggregator,
+            avsAddress,
+            operatorStatus
         );
         return success;
     }
 
     function registerBLSPublicKey(
+        string memory operator,
         string memory name,
         bytes memory pubKey,
-        bytes memory pubKeyRegistrationSignature,
-        bytes memory pubKeyRegistrationMessageHash
+        bytes memory pubkeyRegistrationSignature,
+        bytes memory pubkeyRegistrationMessageHash
     ) public returns (bool) {
+
         bool success = avs.AVSMANAGER_CONTRACT.registerBLSPublicKey(
-            msg.sender,
+            operator,
             name,
             pubKey,
-            pubKeyRegistrationSignature,
-            pubKeyRegistrationMessageHash
+            pubkeyRegistrationSignature,
+            pubkeyRegistrationMessageHash
         );
         return success;
     }
@@ -135,38 +162,4 @@ contract AvsServiceContract {
         require(success, "Call failed");
         return data;
     }
-
-    function fastAggregateVerify(
-        bytes32 msg_,
-        bytes calldata signature,
-        bytes[] calldata pubkeys
-    ) public  returns (bool) {
-        (bool success, ) = BLS_PRECOMPILE_ADDRESS.call(
-            abi.encodeWithSelector(
-                bytes4(keccak256("fastAggregateVerify(bytes32,bytes,bytes[])")),
-                msg_,signature,pubkeys
-            )
-        );
-
-        return success;
-
-    }
-
-    function submitProof(
-        string memory taskId,
-        string memory taskContractAddress,
-        string memory aggregator,
-        string memory avsAddress,
-        bytes memory operatorStatus
-    ) public returns (bool) {
-        bool success = avs.AVSMANAGER_CONTRACT.submitProof(
-            taskId,
-            taskContractAddress,
-            aggregator,
-            avsAddress,
-            operatorStatus
-        );
-        return success;
-    }
-
 }

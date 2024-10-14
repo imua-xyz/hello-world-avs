@@ -28,15 +28,15 @@ func RegisterOperatorWithExocore(ctx *cli.Context) error {
 	}
 	log.Println("Config:", string(configJson))
 
-	operator, err := operator.NewOperatorFromConfig(nodeConfig)
+	_, err = operator.NewOperatorFromConfig(nodeConfig)
 	if err != nil {
 		return err
 	}
 
-	err = operator.RegisterOperatorWithExocore()
-	if err != nil {
-		return err
-	}
+	//err = operator.RegisterOperatorWithExocore()
+	//if err != nil {
+	//	return err
+	//}
 
 	return nil
 }

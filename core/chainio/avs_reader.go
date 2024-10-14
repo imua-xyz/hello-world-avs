@@ -1,62 +1,62 @@
 package chainio
 
 import (
-	"context"
-	cstaskmanager "github.com/ExocoreNetwork/exocore-avs/bindings/AvsTaskManager"
-	"github.com/ExocoreNetwork/exocore-avs/core/config"
-	sdkavsregistry "github.com/ExocoreNetwork/exocore-sdk/chainio/clients/avsregistry"
-	"github.com/ExocoreNetwork/exocore-sdk/chainio/clients/eth"
+	avs "github.com/ExocoreNetwork/exocore-avs/contracts/bindings/avs"
+	"github.com/ExocoreNetwork/exocore-avs/core/chainio/eth"
 	"github.com/ExocoreNetwork/exocore-sdk/logging"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"math/big"
 )
 
-type AvsReaderer interface {
-	sdkavsregistry.AvsRegistryReader
-
-	CheckSignatures(
-		ctx context.Context, msgHash [32]byte, quorumNumbers []byte, referenceBlockNumber uint32, nonSignerStakesAndSignature cstaskmanager.IBLSSignatureCheckerNonSignerStakesAndSignature,
-	) (cstaskmanager.IBLSSignatureCheckerQuorumStakeTotals, error)
+type EXOReader interface {
+	//	PublicKey          []byte
+	//Name               string
+	//TotalRewardsEarned *big.Int
+	//IsRegistered       bool
+}
+type Operator struct {
+	PublicKey          []byte
+	Name               string
+	TotalRewardsEarned *big.Int
+	IsRegistered       bool
+}
+type EXOChainReader struct {
+	logger     logging.Logger
+	avsManager avs.Contractavsservice
+	ethClient  eth.EthClient
 }
 
-type AvsReader struct {
-	sdkavsregistry.AvsRegistryReader
-	AvsServiceBindings *AvsManagersBindings
-	logger             logging.Logger
-}
+// forces EthReader to implement the chainio.Reader interface
+var _ EXOReader = (*EXOChainReader)(nil)
 
-var _ AvsReaderer = (*AvsReader)(nil)
-
-func BuildAvsReaderFromConfig(c *config.Config) (*AvsReader, error) {
-	return BuildAvsReader(c.AvsRegistryCoordinatorAddr, c.OperatorStateRetrieverAddr, c.EthHttpClient, c.Logger)
-}
-func BuildAvsReader(registryCoordinatorAddr, operatorStateRetrieverAddr gethcommon.Address, ethHttpClient eth.EthClient, logger logging.Logger) (*AvsReader, error) {
-	avsManagersBindings, err := NewAvsManagersBindings(registryCoordinatorAddr, operatorStateRetrieverAddr, ethHttpClient, logger)
-	if err != nil {
-		return nil, err
+func NewExoChainReader(
+	avsManager avs.Contractavsservice,
+	logger logging.Logger,
+	ethClient eth.EthClient,
+) *EXOChainReader {
+	return &EXOChainReader{
+		avsManager: avsManager,
+		logger:     logger,
+		ethClient:  ethClient,
 	}
-	avsRegistryReader, err := sdkavsregistry.BuildAvsRegistryChainReader(registryCoordinatorAddr, operatorStateRetrieverAddr, ethHttpClient, logger)
-	if err != nil {
-		return nil, err
-	}
-	return NewAvsReader(avsRegistryReader, avsManagersBindings, logger)
-}
-func NewAvsReader(avsRegistryReader sdkavsregistry.AvsRegistryReader, avsServiceBindings *AvsManagersBindings, logger logging.Logger) (*AvsReader, error) {
-	return &AvsReader{
-		AvsRegistryReader:  avsRegistryReader,
-		AvsServiceBindings: avsServiceBindings,
-		logger:             logger,
-	}, nil
 }
 
-func (r *AvsReader) CheckSignatures(
-	ctx context.Context, msgHash [32]byte, quorumNumbers []byte, referenceBlockNumber uint32, nonSignerStakesAndSignature cstaskmanager.IBLSSignatureCheckerNonSignerStakesAndSignature,
-) (cstaskmanager.IBLSSignatureCheckerQuorumStakeTotals, error) {
-	stakeTotalsPerQuorum, _, err := r.AvsServiceBindings.TaskManager.CheckSignatures(
-		&bind.CallOpts{}, msgHash, quorumNumbers, referenceBlockNumber, nonSignerStakesAndSignature,
+func BuildExoChainReader(
+	avsAddr gethcommon.Address,
+	ethClient eth.EthClient,
+	logger logging.Logger,
+) (*EXOChainReader, error) {
+	exoContractBindings, err := NewExocoreContractBindings(
+		avsAddr,
+		ethClient,
+		logger,
 	)
 	if err != nil {
-		return cstaskmanager.IBLSSignatureCheckerQuorumStakeTotals{}, err
+		return nil, err
 	}
-	return stakeTotalsPerQuorum, nil
+	return NewExoChainReader(
+		*exoContractBindings.AVSManager,
+		logger,
+		ethClient,
+	), nil
 }

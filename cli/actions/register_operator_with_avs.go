@@ -30,7 +30,7 @@ func RegisterOperatorWithAvs(ctx *cli.Context) error {
 	}
 	log.Println("Config:", string(configJson))
 
-	operator, err := operator.NewOperatorFromConfig(nodeConfig)
+	_, err = operator.NewOperatorFromConfig(nodeConfig)
 	if err != nil {
 		return err
 	}
@@ -46,11 +46,12 @@ func RegisterOperatorWithAvs(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	log.Printf(operatorEcdsaPrivKey.D.String())
 
-	err = operator.RegisterOperatorWithAvs(operatorEcdsaPrivKey)
-	if err != nil {
-		return err
-	}
+	//err = operator.RegisterOperatorWithAvs(operatorEcdsaPrivKey)
+	//if err != nil {
+	//	return err
+	//}
 
 	return nil
 }

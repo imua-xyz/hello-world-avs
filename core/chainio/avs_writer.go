@@ -2,115 +2,189 @@ package chainio
 
 import (
 	"context"
-	cstaskmanager "github.com/ExocoreNetwork/exocore-avs/bindings/AvsTaskManager"
-	"math/big"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-
-	"github.com/ExocoreNetwork/exocore-sdk/chainio/clients/avsregistry"
-	"github.com/ExocoreNetwork/exocore-sdk/chainio/clients/eth"
+	"crypto/ecdsa"
+	"errors"
+	avs "github.com/ExocoreNetwork/exocore-avs/contracts/bindings/avs"
+	"github.com/ExocoreNetwork/exocore-avs/core/chainio/eth"
 	"github.com/ExocoreNetwork/exocore-sdk/chainio/txmgr"
-	logging "github.com/ExocoreNetwork/exocore-sdk/logging"
-
-	"github.com/ExocoreNetwork/exocore-avs/core/config"
+	"github.com/ExocoreNetwork/exocore-sdk/logging"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethtypes "github.com/ethereum/go-ethereum/core/types"
+	"math/big"
 )
 
-type AvsWriterer interface {
-	avsregistry.AvsRegistryWriter
-
-	SendNewTaskNumberToSum(
+type EXOWriter interface {
+	RegisterAVSToExocore(
 		ctx context.Context,
-		numOneToSum *big.Int,
-		numTwoToSum *big.Int,
-		thresholdPercentage uint32,
-	) (cstaskmanager.IIncredibleSquaringTaskManagerTask, uint32, error)
-	SendAggregatedResponse(ctx context.Context,
-		task cstaskmanager.IIncredibleSquaringTaskManagerTask,
-		taskResponse cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse,
-		nonSignerStakesAndSignature cstaskmanager.IBLSSignatureCheckerNonSignerStakesAndSignature,
-	) (*types.Receipt, error)
+		avsName string,
+		minStakeAmount uint64,
+		taskAddr gethcommon.Address,
+		slashAddr gethcommon.Address,
+		rewardAddr gethcommon.Address,
+		avsOwnerAddress []string,
+		assetIds []string,
+		avsUnbondingPeriod uint64,
+		minSelfDelegation uint64,
+		epochIdentifier string,
+		params []uint64,
+	) (*gethtypes.Receipt, error)
+
+	CreateNewTask(
+		ctx context.Context,
+		name string,
+		taskResponsePeriod uint64,
+		taskChallengePeriod uint64,
+		thresholdPercentage uint64,
+		taskStatisticalPeriod uint64,
+	) (*gethtypes.Receipt, error)
 }
 
-type AvsWriter struct {
-	avsregistry.AvsRegistryWriter
-	AvsContractBindings *AvsManagersBindings
-	logger              logging.Logger
-	TxMgr               txmgr.TxManager
-	client              eth.EthClient
+type EXOChainWriter struct {
+	avsManager     avs.Contractavsservice
+	exoChainReader EXOReader
+	ethClient      eth.EthClient
+	logger         logging.Logger
+	txMgr          txmgr.TxManager
 }
 
-var _ AvsWriterer = (*AvsWriter)(nil)
+var _ EXOWriter = (*EXOChainWriter)(nil)
 
-func BuildAvsWriterFromConfig(c *config.Config) (*AvsWriter, error) {
-	return BuildAvsWriter(c.TxMgr, c.AvsRegistryCoordinatorAddr, c.OperatorStateRetrieverAddr, c.EthHttpClient, c.Logger)
+func NewELChainWriter(
+	avsManager avs.Contractavsservice,
+	exoChainReader EXOReader,
+	ethClient eth.EthClient,
+	logger logging.Logger,
+	txMgr txmgr.TxManager,
+) *EXOChainWriter {
+	return &EXOChainWriter{
+		avsManager:     avsManager,
+		exoChainReader: exoChainReader,
+		logger:         logger,
+		ethClient:      ethClient,
+		txMgr:          txMgr,
+	}
 }
 
-func BuildAvsWriter(txMgr txmgr.TxManager, registryCoordinatorAddr, operatorStateRetrieverAddr gethcommon.Address, ethHttpClient eth.EthClient, logger logging.Logger) (*AvsWriter, error) {
-	avsServiceBindings, err := NewAvsManagersBindings(registryCoordinatorAddr, operatorStateRetrieverAddr, ethHttpClient, logger)
+func BuildELChainWriter(
+	avsAddr gethcommon.Address,
+	ethClient eth.EthClient,
+	logger logging.Logger,
+	txMgr txmgr.TxManager,
+) (*EXOChainWriter, error) {
+	exoContractBindings, err := NewExocoreContractBindings(
+		avsAddr,
+		ethClient,
+		logger,
+	)
 	if err != nil {
-		logger.Error("Failed to create contract bindings", "err", err)
 		return nil, err
 	}
-	avsRegistryWriter, err := avsregistry.BuildAvsRegistryChainWriter(registryCoordinatorAddr, operatorStateRetrieverAddr, logger, ethHttpClient, txMgr)
-	if err != nil {
-		return nil, err
-	}
-	return NewAvsWriter(avsRegistryWriter, avsServiceBindings, logger, txMgr), nil
-}
-func NewAvsWriter(avsRegistryWriter avsregistry.AvsRegistryWriter, avsServiceBindings *AvsManagersBindings, logger logging.Logger, txMgr txmgr.TxManager) *AvsWriter {
-	return &AvsWriter{
-		AvsRegistryWriter:   avsRegistryWriter,
-		AvsContractBindings: avsServiceBindings,
-		logger:              logger,
-		TxMgr:               txMgr,
-	}
-}
-
-// SendNewTaskNumberToSquare returns the tx receipt, as well as the task index (which it gets from parsing the tx receipt logs)
-func (w *AvsWriter) SendNewTaskNumberToSquare(ctx context.Context, numToSquare *big.Int, quorumThresholdPercentage uint32, quorumNumbers []byte) (cstaskmanager.IIncredibleSquaringTaskManagerTask, uint32, error) {
-	txOpts, err := w.TxMgr.GetNoSendTxOpts()
-	if err != nil {
-		w.logger.Errorf("Error getting tx opts")
-		return cstaskmanager.IIncredibleSquaringTaskManagerTask{}, 0, err
-	}
-	tx, err := w.AvsContractBindings.TaskManager.CreateNewTask(txOpts, numToSquare, quorumThresholdPercentage, quorumNumbers)
-	if err != nil {
-		w.logger.Errorf("Error assembling CreateNewTask tx")
-		return cstaskmanager.IIncredibleSquaringTaskManagerTask{}, 0, err
-	}
-	receipt, err := w.TxMgr.Send(ctx, tx)
-	if err != nil {
-		w.logger.Errorf("Error submitting CreateNewTask tx")
-		return cstaskmanager.IIncredibleSquaringTaskManagerTask{}, 0, err
-	}
-	newTaskCreatedEvent, err := w.AvsContractBindings.TaskManager.ContractIncredibleSquaringTaskManagerFilterer.ParseNewTaskCreated(*receipt.Logs[0])
-	if err != nil {
-		w.logger.Error("Aggregator failed to parse new task created event", "err", err)
-		return cstaskmanager.IIncredibleSquaringTaskManagerTask{}, 0, err
-	}
-	return newTaskCreatedEvent.Task, newTaskCreatedEvent.TaskIndex, nil
+	elChainReader := NewExoChainReader(
+		*exoContractBindings.AVSManager,
+		logger,
+		ethClient,
+	)
+	return NewELChainWriter(
+		*exoContractBindings.AVSManager,
+		elChainReader,
+		ethClient,
+		logger,
+		txMgr,
+	), nil
 }
 
-func (w *AvsWriter) SendAggregatedResponse(
-	ctx context.Context, task cstaskmanager.IIncredibleSquaringTaskManagerTask,
-	taskResponse cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse,
-	nonSignerStakesAndSignature cstaskmanager.IBLSSignatureCheckerNonSignerStakesAndSignature,
-) (*types.Receipt, error) {
-	txOpts, err := w.TxMgr.GetNoSendTxOpts()
+func (w *EXOChainWriter) RegisterAVSToExocore(
+	ctx context.Context,
+	avsName string,
+	minStakeAmount uint64,
+	taskAddr gethcommon.Address,
+	slashAddr gethcommon.Address,
+	rewardAddr gethcommon.Address,
+	avsOwnerAddress []string,
+	assetIds []string,
+	avsUnbondingPeriod uint64,
+	minSelfDelegation uint64,
+	epochIdentifier string,
+	params []uint64,
+) (*gethtypes.Receipt, error) {
+
+	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()
 	if err != nil {
-		w.logger.Errorf("Error getting tx opts")
 		return nil, err
 	}
-	tx, err := w.AvsContractBindings.TaskManager.RespondToTask(txOpts, task, taskResponse, nonSignerStakesAndSignature)
+	tx, err := w.avsManager.RegisterAVS(noSendTxOpts,
+		avsName,
+		minStakeAmount,
+		taskAddr,
+		slashAddr,
+		rewardAddr,
+		avsOwnerAddress,
+		assetIds,
+		avsUnbondingPeriod,
+		minSelfDelegation,
+		epochIdentifier,
+		params)
 	if err != nil {
-		w.logger.Error("Error submitting SubmitTaskResponse tx while calling respondToTask", "err", err)
 		return nil, err
 	}
-	receipt, err := w.TxMgr.Send(ctx, tx)
+	receipt, err := w.txMgr.Send(ctx, tx)
 	if err != nil {
-		w.logger.Errorf("Error submitting CreateNewTask tx")
-		return nil, err
+		return nil, errors.New("failed to send tx with err: " + err.Error())
 	}
+	w.logger.Infof("tx hash: %s", tx.Hash().String())
+
 	return receipt, nil
+}
+func (w *EXOChainWriter) CreateNewTask(
+	ctx context.Context,
+	name string,
+	taskResponsePeriod uint64,
+	taskChallengePeriod uint64,
+	thresholdPercentage uint64,
+	taskStatisticalPeriod uint64,
+) (*gethtypes.Receipt, error) {
+	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()
+	if err != nil {
+		return nil, err
+	}
+	tx, err := w.avsManager.CreateNewTask(
+		noSendTxOpts,
+		name,
+		taskResponsePeriod,
+		taskChallengePeriod,
+		thresholdPercentage,
+		taskStatisticalPeriod)
+	if err != nil {
+		return nil, err
+	}
+	receipt, err := w.txMgr.Send(ctx, tx)
+	if err != nil {
+		return nil, errors.New("failed to send tx with err: " + err.Error())
+	}
+	w.logger.Infof("tx hash: %s", tx.Hash().String())
+
+	return receipt, nil
+}
+
+func DeployAVS(
+	ethClient eth.EthClient,
+	logger logging.Logger,
+	key ecdsa.PrivateKey,
+	chainID *big.Int,
+) (gethcommon.Address, string, error) {
+	auth, err := bind.NewKeyedTransactorWithChainID(&key, chainID)
+	if err != nil {
+		logger.Fatalf("Failed to make transactor: %v", err)
+	}
+
+	address, tx, _, err := avs.DeployContractavsservice(auth, ethClient)
+	if err != nil {
+		logger.Infof("deploy err: %s", err.Error())
+		return gethcommon.Address{}, "", errors.New("failed to deploy contract with err: " + err.Error())
+	}
+	logger.Infof("tx hash: %s", tx.Hash().String())
+	logger.Infof("contract address: %s", address.String())
+
+	return address, tx.Hash().String(), nil
 }

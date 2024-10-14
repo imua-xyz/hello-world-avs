@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/urfave/cli"
 
-	"github.com/ExocoreNetwork/exocore-sdk/chainio/clients/eth"
+	"github.com/ExocoreNetwork/exocore-avs/core/chainio/eth"
 	"github.com/ExocoreNetwork/exocore-sdk/chainio/txmgr"
 	"github.com/ExocoreNetwork/exocore-sdk/crypto/bls"
 	sdklogging "github.com/ExocoreNetwork/exocore-sdk/logging"
@@ -20,6 +20,7 @@ import (
 )
 
 type Config struct {
+	Production      bool `yaml:"production"`
 	EcdsaPrivateKey *ecdsa.PrivateKey
 	BlsPrivateKey   *bls.PrivateKey
 	Logger          sdklogging.Logger
@@ -34,9 +35,10 @@ type Config struct {
 	AggregatorServerIpPortAddr string
 	RegisterOperatorOnStartup  bool
 	// json:"-" skips this field when marshaling (only used for logging to stdout), since SignerFn doesnt implement marshalJson
-	SignerFn          signerv2.SignerFn `json:"-"`
-	TxMgr             txmgr.TxManager
-	AggregatorAddress common.Address
+	SignerFn                 signerv2.SignerFn `json:"-"`
+	TxMgr                    txmgr.TxManager
+	AggregatorAddress        common.Address
+	EcdsaPrivateKeyStorePath string `yaml:"ecdsa_private_key_store_path"`
 }
 
 // ConfigRaw These are read from ConfigFileFlag
