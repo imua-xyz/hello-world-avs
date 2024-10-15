@@ -11,7 +11,6 @@ import (
 	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
 	"github.com/ethereum/go-ethereum/common"
 	"math/rand"
-	"os"
 	"time"
 )
 
@@ -49,14 +48,14 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		return nil, err
 	}
 
-	ecdsaKeyPassword, ok := os.LookupEnv("OPERATOR_ECDSA_KEY_PASSWORD")
-	if !ok {
-		logger.Warnf("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
-	}
+	// ecdsaKeyPassword, ok := os.LookupEnv("OPERATOR_ECDSA_KEY_PASSWORD")
+	//if !ok {
+	//	logger.Info("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
+	//}
 
 	signerV2, _, err := signerv2.SignerFromConfig(signerv2.Config{
-		KeystorePath: c.EcdsaPrivateKeyStorePath,
-		Password:     ecdsaKeyPassword,
+		KeystorePath: c.AVSEcdsaPrivateKeyStorePath,
+		Password:     "1",
 	}, chainId)
 	if err != nil {
 		panic(err)
@@ -64,7 +63,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 
 	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, common.HexToAddress(c.AVSOwnerAddress))
 	avsWriter, _ := chain.BuildELChainWriter(
-		common.HexToAddress(c.AVSOwnerAddress),
+		common.HexToAddress(c.AVSAddress),
 		ethRpcClient,
 		logger,
 		txMgr)

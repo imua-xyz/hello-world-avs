@@ -24,7 +24,7 @@ var (
 func main() {
 
 	app := cli.NewApp()
-	app.Flags = config.Flags
+	app.Flags = []cli.Flag{config.FileFlag}
 	app.Version = fmt.Sprintf("%s-%s-%s", Version, GitCommit, GitDate)
 	app.Name = "hello-avs-demo"
 	app.Usage = "hello-avs-demo"

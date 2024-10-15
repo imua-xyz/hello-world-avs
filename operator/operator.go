@@ -3,7 +3,8 @@ package operator
 import (
 	"context"
 	"encoding/hex"
-	cstaskmanager "github.com/ExocoreNetwork/exocore-avs/contracts/bindings/avs"
+	"fmt"
+	avs "github.com/ExocoreNetwork/exocore-avs/contracts/bindings/avs"
 	"github.com/ExocoreNetwork/exocore-avs/core"
 	chain "github.com/ExocoreNetwork/exocore-avs/core/chainio"
 	"github.com/ExocoreNetwork/exocore-avs/core/chainio/eth"
@@ -12,7 +13,10 @@ import (
 	"github.com/ExocoreNetwork/exocore-sdk/crypto/bls"
 	sdkecdsa "github.com/ExocoreNetwork/exocore-sdk/crypto/ecdsa"
 	sdklogging "github.com/ExocoreNetwork/exocore-sdk/logging"
+	"github.com/ethereum/go-ethereum"
 	blscommon "github.com/prysmaticlabs/prysm/v4/crypto/bls/common"
+	"math/big"
+	"time"
 
 	"github.com/ExocoreNetwork/exocore-sdk/nodeapi"
 	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
@@ -35,7 +39,7 @@ type Operator struct {
 	blsKeypair   blscommon.SecretKey
 	operatorAddr common.Address
 	// receive new tasks in this chan (typically from listening to onchain event)
-	newTaskCreatedChan chan *cstaskmanager.ContractavsserviceTaskCreated
+	newTaskCreatedChan chan *avs.ContractavsserviceTaskCreated
 	// needed when opting in to avs (allow this service manager contract to slash operator)
 	avsAddr common.Address
 }
@@ -69,7 +73,7 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 
 	blsKeyPassword, ok := os.LookupEnv("OPERATOR_BLS_KEY_PASSWORD")
 	if !ok {
-		logger.Warnf("OPERATOR_BLS_KEY_PASSWORD env var not set. using empty string")
+		logger.Info("OPERATOR_BLS_KEY_PASSWORD env var not set. using empty string")
 	}
 	blsKeyPair, err := bls.ReadPrivateKeyFromFile(c.BlsPrivateKeyStorePath, blsKeyPassword)
 	if err != nil {
@@ -87,11 +91,11 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 
 	ecdsaKeyPassword, ok := os.LookupEnv("OPERATOR_ECDSA_KEY_PASSWORD")
 	if !ok {
-		logger.Warnf("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
+		logger.Info("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
 	}
 
 	signerV2, _, err := signerv2.SignerFromConfig(signerv2.Config{
-		KeystorePath: c.EcdsaPrivateKeyStorePath,
+		KeystorePath: c.OperatorEcdsaPrivateKeyStorePath,
 		Password:     ecdsaKeyPassword,
 	}, chainId)
 	if err != nil {
@@ -132,13 +136,13 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		avsSubscriber:      avsSubscriber,
 		blsKeypair:         blsKeyPair,
 		operatorAddr:       common.HexToAddress(c.OperatorAddress),
-		newTaskCreatedChan: make(chan *cstaskmanager.ContractavsserviceTaskCreated),
+		newTaskCreatedChan: make(chan *avs.ContractavsserviceTaskCreated),
 		avsAddr:            common.HexToAddress(c.AVSAddress),
 	}
 
 	if c.RegisterOperatorOnStartup {
 		operatorEcdsaPrivateKey, err := sdkecdsa.ReadKey(
-			c.EcdsaPrivateKeyStorePath,
+			c.OperatorEcdsaPrivateKeyStorePath,
 			ecdsaKeyPassword,
 		)
 		if err != nil {
@@ -174,52 +178,129 @@ func (o *Operator) Start(ctx context.Context) error {
 		o.nodeApi.Start()
 	}
 
-	sub := o.avsSubscriber.SubscribeToNewTasks(o.newTaskCreatedChan)
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case err := <-sub.Err():
-			o.logger.Error("Error in websocket subscription", "err", err)
-			// TODO(samlaf): write unit tests to check if this fixed the issues we were seeing
-			sub.Unsubscribe()
-			// TODO(samlaf): wrap this call with increase in avs-node-spec metric
-			sub = o.avsSubscriber.SubscribeToNewTasks(o.newTaskCreatedChan)
-		case newTaskCreatedLog := <-o.newTaskCreatedChan:
-			taskResponse := o.ProcessNewTaskCreatedLog(newTaskCreatedLog)
-			sig, err := o.SignTaskResponse(taskResponse)
-			if err != nil {
-				continue
-			}
-			o.logger.Info("SignTaskResponse sig:", sig)
+	firstHeight, err := o.ethClient.BlockNumber(context.Background())
+	if err != nil {
+		o.logger.Error("Cannot create AvsSubscriber", "err", err)
+		return err
+	}
+	o.GetLog(int64(firstHeight))
 
-			//go o.SendSignedTaskResponseToExocore(sig)
+	height := firstHeight
+	fmt.Printf("Event firstHeight: %v\n", firstHeight)
+
+	for {
+		currentHeight, err := o.ethClient.BlockNumber(context.Background())
+		fmt.Printf("Event currentHeight: %v\n", currentHeight)
+
+		if err != nil {
+			o.logger.Fatal(err.Error())
+		}
+		if currentHeight == height+1 {
+			o.GetLog(int64(currentHeight))
+
+			height = currentHeight
+		}
+		time.Sleep(2 * time.Second) // 等待一秒钟后再次查询
+	}
+
+	//case newTaskCreatedLog := <-o.newTaskCreatedChan:
+	//	taskResponse := o.ProcessNewTaskCreatedLog(newTaskCreatedLog)
+	//	sig, err := o.SignTaskResponse(taskResponse)
+	//	if err != nil {
+	//		continue
+	//	}
+	//	o.logger.Info("SignTaskResponse sig:", sig)
+	//
+	//	//go o.SendSignedTaskResponseToExocore(sig)
+
+}
+func (o *Operator) GetLog(height int64) {
+	query := ethereum.FilterQuery{
+		Addresses: []common.Address{o.avsAddr},
+		FromBlock: big.NewInt(height),
+		ToBlock:   big.NewInt(height),
+	}
+
+	logs, err := o.ethClient.FilterLogs(context.Background(), query)
+	if err != nil {
+		o.logger.Fatal(err.Error())
+	}
+	if logs != nil {
+		contractAbi, _ := avs.ContractavsserviceMetaData.GetAbi()
+		event := contractAbi.Events["TaskCreated"]
+		for _, vLog := range logs {
+			fmt.Println(vLog.BlockHash.Hex())
+			fmt.Println(vLog.BlockNumber)
+			fmt.Println(vLog.TxHash.Hex())
+			data := vLog.Data
+			fmt.Println(vLog.Topics)
+			fmt.Println(event.ID)
+
+			eventArgs, err := event.Inputs.Unpack(data)
+			if err != nil {
+				o.logger.Fatal(err.Error())
+			}
+			if eventArgs != nil {
+				taskResponse := o.ProcessNewTaskCreatedLog(eventArgs)
+
+				sig, err := o.SignTaskResponse(taskResponse)
+				if err != nil {
+					continue
+				}
+				fmt.Println(sig)
+				//go o.SendSignedTaskResponseToExocore(sig)
+			}
+			//taskId := eventArgs[0].(*big.Int)
+			//issuer := eventArgs[1].(common.Address)
+			//name := eventArgs[2].(string)
+			//taskResponsePeriod := eventArgs[3].(uint64)
+			//taskChallengePeriod := eventArgs[4].(uint64)
+			//thresholdPercentage := eventArgs[5].(uint64)
+			//taskStatisticalPeriod := eventArgs[6].(uint64)
+			//fmt.Println(data)
+			//fmt.Println(eventArgs)
+			//
+			//fmt.Printf("Task ID: %v", taskId)
+			//fmt.Printf("Issuer: %s", issuer.Hex())
+			//fmt.Printf(name)
+			//fmt.Printf("Task Response Period: %d", taskResponsePeriod)
+			//fmt.Printf("Task Challenge Period: %d", taskChallengePeriod)
+			//fmt.Printf("Threshold Percentage: %d", thresholdPercentage)
+			//fmt.Printf("Task Statistical Period: %d", taskStatisticalPeriod)
 		}
 	}
+
 }
 
 // ProcessNewTaskCreatedLog Takes a NewTaskCreatedLog struct as input and returns a TaskResponseHeader struct.
-// The TaskResponseHeader struct is the struct that is signed and sent to the contract as a task response.
-func (o *Operator) ProcessNewTaskCreatedLog(newTaskCreatedLog *cstaskmanager.ContractavsserviceTaskCreated) *core.TaskResponse {
-	o.logger.Debug("Received new task", "task", newTaskCreatedLog)
+// The TaskResponseHeader struct is the struct that is signed and sent to the exocore as a task response.
+func (o *Operator) ProcessNewTaskCreatedLog(eventArgs []interface{}) *core.TaskResponse {
+	o.logger.Debug("Received new task", "task", eventArgs)
 	o.logger.Info("Received new task",
-		"numberToBeSquared", newTaskCreatedLog.TaskId,
-		"taskIndex", newTaskCreatedLog.Name,
+		"id", eventArgs[0].(*big.Int),
+		"name", eventArgs[2].(string),
 	)
 	taskResponse := &core.TaskResponse{
-		TaskID: newTaskCreatedLog.TaskId,
-		Msg:    newTaskCreatedLog.Name,
+		TaskID: eventArgs[0].(*big.Int),
+		Msg:    eventArgs[2].(string),
 	}
 	return taskResponse
 }
 
 func (o *Operator) SignTaskResponse(taskResponse *core.TaskResponse) (string, error) {
-	taskResponseHash, err := core.GetTaskResponseDigest(taskResponse)
+
+	taskResponseHash, err := core.GetTaskResponseDigestEncodeByjson(*taskResponse)
 	if err != nil {
-		o.logger.Error("Error getting task response header hash. skipping task (this is not expected and should be investigated)", "err", err)
+		o.logger.Error("Error SignTaskResponse with getting task response header hash. skipping task (this is not expected and should be investigated)", "err", err)
 		return "", err
 	}
-	sig := o.blsKeypair.Sign(taskResponseHash[:])
+	msgBytes := taskResponseHash[:]
+	fmt.Println("ResHash:", hex.EncodeToString(msgBytes))
+
+	sig := o.blsKeypair.Sign(msgBytes)
+
 	sigStr := hex.EncodeToString(sig.Marshal())
+	fmt.Println("sig:", sigStr)
+
 	return sigStr, nil
 }
