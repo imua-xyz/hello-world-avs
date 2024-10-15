@@ -12,17 +12,17 @@ import (
 
 	"github.com/ExocoreNetwork/exocore-avs/core/chainio/eth"
 	"github.com/ExocoreNetwork/exocore-sdk/chainio/txmgr"
-	"github.com/ExocoreNetwork/exocore-sdk/crypto/bls"
 	sdklogging "github.com/ExocoreNetwork/exocore-sdk/logging"
 	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
 
 	sdkutils "github.com/ExocoreNetwork/exocore-sdk/utils"
+	blscommon "github.com/prysmaticlabs/prysm/v4/crypto/bls/common"
 )
 
 type Config struct {
 	Production      bool `yaml:"production"`
 	EcdsaPrivateKey *ecdsa.PrivateKey
-	BlsPrivateKey   *bls.PrivateKey
+	BlsPrivateKey   *blscommon.SecretKey
 	Logger          sdklogging.Logger
 	// we need the url for the exocore-sdk currently... eventually standardize api to
 	// only take an ethclient or an rpcUrl (and build the ethclient at each constructor site)
@@ -60,7 +60,7 @@ type AvsContractsRaw struct {
 }
 
 // NewConfig parses config file to read from flags or environment variables
-// Note: This config is shared by challenger and aggregator, and so we put in the core.
+// Note: This config is shared by challenger and avs, and so we put in the core.
 // Operator has a different config and is meant to be used by the operator CLI.
 func NewConfig(ctx *cli.Context) (*Config, error) {
 

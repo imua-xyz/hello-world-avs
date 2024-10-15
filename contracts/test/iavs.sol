@@ -14,6 +14,7 @@ IAVSManager constant AVSMANAGER_CONTRACT = IAVSManager(
 /// @custom:address 0x0000000000000000000000000000000000000901
 interface IAVSManager {
     /// @dev Register AVS contract to EXO.
+    /// @param sender The external address for calling this method.
     /// @param avsName The name of AVS.
     /// @param minStakeAmount The minimum amount of funds staked by each operator.
     /// @param taskAddr The task address of AVS.
@@ -29,6 +30,7 @@ interface IAVSManager {
     ///3.avsReward The proportion of reward for AVS.
     ///4.avsSlash The proportion of slash for AVS.
     function registerAVS(
+        address sender,
         string memory avsName,
         uint64 minStakeAmount,
         address taskAddr,
@@ -43,6 +45,7 @@ interface IAVSManager {
     ) external returns (bool success);
 
     /// @dev Update AVS info to EXO.
+    /// @param sender The external address for calling this method.
     /// @param avsName The name of AVS.
     /// @param minStakeAmount The minimum amount of funds staked by each operator.
     /// @param taskAddr The task address of AVS.
@@ -58,6 +61,7 @@ interface IAVSManager {
     ///3.avsReward The proportion of reward for AVS.
     ///4.avsSlash The proportion of slash for AVS.
     function updateAVS(
+        address sender,
         string memory avsName,
         uint64 minStakeAmount,
         address taskAddr,
@@ -72,40 +76,64 @@ interface IAVSManager {
     ) external returns (bool success);
 
     /// @dev Deregister avs from exo
+    /// @param sender The external address for calling this method.
     /// @param avsName The name of AVS.
     function deregisterAVS(
+        address sender,
         string memory avsName
     ) external returns (bool success);
 
     /// @dev RegisterOperatorToAVS operator opt in current avs
+    /// @param sender The external address for calling this method.
     function registerOperatorToAVS(
+        address sender
     ) external returns (bool success);
 
     /// @dev DeregisterOperatorFromAVS operator opt out current avs
+    /// @param sender The external address for calling this method.
     function deregisterOperatorFromAVS(
+        address sender
     ) external returns (bool success);
 
 
     /// @dev CreateTask , avs owner create a new task
+    /// @param sender The external address for calling this method.
     /// @param name The name of the task.
-    /// @param data The data supplied by the contract, usually ABI-encoded.
-    /// @param taskId The task ID of the task.
+    /// @param hash The data supplied by the contract, usually ABI-encoded.
     /// @param taskResponsePeriod The deadline for task response.
     /// @param taskChallengePeriod The challenge period for the task.
     /// @param thresholdPercentage The signature threshold percentage.
+    /// @param taskStatisticalPeriod The statistical period for the task.
     function createTask(
+        address sender,
         string memory name,
-        bytes calldata data,
-        string memory taskId,
+        bytes calldata hash,
         uint64 taskResponsePeriod,
         uint64 taskChallengePeriod,
-        uint64 thresholdPercentage
+        uint64 thresholdPercentage,
+        uint64 taskStatisticalPeriod
     ) external returns (bool success);
+
+    /// @dev challenge ,  this function enables a challenger to raise and resolve a challenge.
+    /// @param sender The external address for calling this method.
+    /// @param taskHash The data supplied by the contract, usually ABI-encoded.
+    /// @param taskID The id of task.
+    /// @param taskResponseHash The hash of task response.
+    /// @param operatorAddress operator address.
+    function challenge(
+        address sender,
+        bytes calldata taskHash,
+        uint64 taskID,
+        bytes calldata taskResponseHash,
+        string memory operatorAddress
+    ) external returns (bool success);
+
+
 
     /// @dev SubmitProof ,After processing the task contract, aggregate the signature and submit the processed proof
     /// @param taskId The task ID of the task.
     /// @param taskContractAddress The contract address of AVSTask.
-    /// @param aggregator The aggregator address.
+    /// @param avs The avs address.
     /// @param avsAddress The address of AVS.
     /// @param operatorStatus The status and proof of operators.
     function submitProof(
@@ -118,13 +146,13 @@ interface IAVSManager {
 
 
     /// @dev Called by the avs manager service register an operator as the owner of a BLS public key.
-    /// @param operator is the operator for whom the key is being registered
+    /// @param sender The external address for calling this method.
     /// @param name the name of public keys
     /// @param pubKey the public keys of the operator
     /// @param pubkeyRegistrationSignature the public keys of the operator
     /// @param pubkeyRegistrationMessageHash the public keys of the operator
     function registerBLSPublicKey(
-        string memory operator,
+        address sender,
         string calldata name,
         bytes calldata pubKey,
         bytes calldata pubkeyRegistrationSignature,
@@ -141,11 +169,28 @@ interface IAVSManager {
     /// @param avsAddress avs address
     function getOptInOperators(address avsAddress) external returns (string[] calldata operators);
 
+    /// @dev getAVSUSDValue is a function to retrieve the USD share of specified Avs.
+    /// @param avsAddr The address of the avs
+    /// @return amount The total USD share of specified operator and Avs.
+    function getAVSUSDValue(
+        address avsAddr
+    ) external view returns (uint256 amount);
+
+    /// @dev getOperatorOptedUSDValue  is a function to retrieve the USD share of specified operator and Avs.
+    /// @param avsAddr The address of the avs
+    /// @param operatorAddr The address of the operator
+    /// @return amount The total USD share of specified operator and Avs.
+    function getOperatorOptedUSDValue(
+        address avsAddr,
+        string memory operatorAddr
+    ) external view returns (uint256 amount);
+
     /// @dev RegisterBLSPublicKey Emitted when `operator` registers with the public keys `pubKey`.
-    /// @param operator the address of the delegator
-    /// @param pubKey the address of the validator
+    /// @param name the name of the blsKey
+    /// @param pubKey the public key of the operator
+    /// @param pubkeyRegistrationSignature the sig of the operator
+    /// @param pubkeyRegistrationMessageHash the sig hash of the operator
     event RegisterBLSPublicKey(
-        string indexed operator,
         string name,
         bytes pubKey,
         bytes pubkeyRegistrationSignature,
@@ -243,23 +288,26 @@ interface IAVSManager {
     /// @param taskContractAddress The contract address of AVSTask.
     /// @param taskId The task ID of the task.
     /// @param name The name of the task.
-    /// @param data The data supplied by the contract, usually ABI-encoded.
+    /// @param hash The data supplied by the contract, usually ABI-encoded.
     /// @param taskResponsePeriod The deadline for task response.
     /// @param taskChallengePeriod The challenge period for the task.
     /// @param thresholdPercentage The signature threshold percentage.
+    /// @param taskStatisticalPeriod The statistical period for the task.
+
     event CreateTask(
         string indexed taskContractAddress,
         string indexed taskId,
         string name,
-        bytes data,
+        bytes hash,
         uint64 taskResponsePeriod,
         uint64 taskChallengePeriod,
-        uint64 thresholdPercentage
+        uint64 thresholdPercentage,
+        uint64 taskStatisticalPeriod
     );
     /// @dev SubmitProof Emitted when task contract submit proof.
     /// @param taskContractAddress The contract address of AVSTask.
     /// @param taskId The task ID of the task.
-    /// @param aggregator The aggregator address.
+    /// @param avs The avs address.
     /// @param avsAddress The address of AVS.
     /// @param operatorStatuses The status and proof of operators.
     event SubmitProof(

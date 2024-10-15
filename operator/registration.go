@@ -2,7 +2,6 @@ package operator
 
 import (
 	"crypto/ecdsa"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 )
@@ -87,8 +86,7 @@ type OperatorStatus struct {
 	EcdsaAddress string
 	// pubkey compendium related
 	PubkeysRegistered bool
-	G1Pubkey          string
-	G2Pubkey          string
+	Pubkey            string
 	// avs related
 	RegisteredWithAvs bool
 	OperatorId        string
@@ -96,14 +94,11 @@ type OperatorStatus struct {
 
 func (o *Operator) PrintOperatorStatus() error {
 	fmt.Println("Printing operator status")
-	registeredWithAvs := o.operatorId != [32]byte{}
 	operatorStatus := OperatorStatus{
 		EcdsaAddress:      o.operatorAddr.String(),
 		PubkeysRegistered: true,
-		G1Pubkey:          o.blsKeypair.GetPubKeyG1().String(),
-		G2Pubkey:          o.blsKeypair.GetPubKeyG2().String(),
-		RegisteredWithAvs: registeredWithAvs,
-		OperatorId:        hex.EncodeToString(o.operatorId[:]),
+		Pubkey:            string(o.blsKeypair.PublicKey().Marshal()),
+		RegisteredWithAvs: false,
 	}
 	operatorStatusJson, err := json.MarshalIndent(operatorStatus, "", " ")
 	if err != nil {

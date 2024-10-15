@@ -2,6 +2,7 @@ package operator
 
 import (
 	"context"
+	"encoding/hex"
 	cstaskmanager "github.com/ExocoreNetwork/exocore-avs/contracts/bindings/avs"
 	"github.com/ExocoreNetwork/exocore-avs/core"
 	chain "github.com/ExocoreNetwork/exocore-avs/core/chainio"
@@ -11,6 +12,7 @@ import (
 	"github.com/ExocoreNetwork/exocore-sdk/crypto/bls"
 	sdkecdsa "github.com/ExocoreNetwork/exocore-sdk/crypto/ecdsa"
 	sdklogging "github.com/ExocoreNetwork/exocore-sdk/logging"
+	blscommon "github.com/prysmaticlabs/prysm/v4/crypto/bls/common"
 
 	"github.com/ExocoreNetwork/exocore-sdk/nodeapi"
 	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
@@ -18,7 +20,7 @@ import (
 	"os"
 )
 
-const AvsName = "avs-demo"
+const AvsName = "hello-world-avs-demo"
 const SemVer = "0.0.1"
 
 type Operator struct {
@@ -30,15 +32,12 @@ type Operator struct {
 	avsReader     chain.EXOChainReader
 	avsSubscriber chain.AvsRegistrySubscriber
 
-	blsKeypair   *bls.KeyPair
-	operatorId   bls.OperatorId
+	blsKeypair   blscommon.SecretKey
 	operatorAddr common.Address
 	// receive new tasks in this chan (typically from listening to onchain event)
 	newTaskCreatedChan chan *cstaskmanager.ContractavsserviceTaskCreated
-	// ip address of aggregator
-	aggregatorServerIpPortAddr string
 	// needed when opting in to avs (allow this service manager contract to slash operator)
-	credibleSquaringServiceManagerAddr common.Address
+	avsAddr common.Address
 }
 
 func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
@@ -102,18 +101,18 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, common.HexToAddress(c.OperatorAddress))
 
 	avsReader, _ := chain.BuildExoChainReader(
-		common.HexToAddress(c.AVSRegistryCoordinatorAddress),
+		common.HexToAddress(c.AVSAddress),
 		ethRpcClient,
 		logger)
 
 	avsWriter, _ := chain.BuildELChainWriter(
-		common.HexToAddress(c.AVSRegistryCoordinatorAddress),
+		common.HexToAddress(c.AVSAddress),
 		ethRpcClient,
 		logger,
 		txMgr)
 
 	avsSubscriber, _ := chain.BuildAvsRegistryChainSubscriber(
-		common.HexToAddress(c.AVSRegistryCoordinatorAddress),
+		common.HexToAddress(c.AVSAddress),
 		ethWsClient,
 		logger,
 	)
@@ -124,20 +123,17 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	}
 
 	operator := &Operator{
-		config:                             c,
-		logger:                             logger,
-		nodeApi:                            nodeApi,
-		ethClient:                          ethRpcClient,
-		avsWriter:                          avsWriter,
-		avsReader:                          *avsReader,
-		avsSubscriber:                      avsSubscriber,
-		blsKeypair:                         blsKeyPair,
-		operatorAddr:                       common.HexToAddress(c.OperatorAddress),
-		aggregatorServerIpPortAddr:         c.AggregatorServerIpPortAddress,
-		newTaskCreatedChan:                 make(chan *cstaskmanager.ContractavsserviceTaskCreated),
-		credibleSquaringServiceManagerAddr: common.HexToAddress(c.AVSRegistryCoordinatorAddress),
-		operatorId:                         [32]byte{0}, // this is set below
-
+		config:             c,
+		logger:             logger,
+		nodeApi:            nodeApi,
+		ethClient:          ethRpcClient,
+		avsWriter:          avsWriter,
+		avsReader:          *avsReader,
+		avsSubscriber:      avsSubscriber,
+		blsKeypair:         blsKeyPair,
+		operatorAddr:       common.HexToAddress(c.OperatorAddress),
+		newTaskCreatedChan: make(chan *cstaskmanager.ContractavsserviceTaskCreated),
+		avsAddr:            common.HexToAddress(c.AVSAddress),
 	}
 
 	if c.RegisterOperatorOnStartup {
@@ -153,8 +149,7 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 
 	logger.Info("Operator info",
 		"operatorAddr", c.OperatorAddress,
-		"operatorG1Pubkey", operator.blsKeypair.GetPubKeyG1(),
-		"operatorG2Pubkey", operator.blsKeypair.GetPubKeyG2(),
+		"operatorKey", operator.blsKeypair.PublicKey().Marshal(),
 	)
 
 	return operator, nil
@@ -192,10 +187,13 @@ func (o *Operator) Start(ctx context.Context) error {
 			sub = o.avsSubscriber.SubscribeToNewTasks(o.newTaskCreatedChan)
 		case newTaskCreatedLog := <-o.newTaskCreatedChan:
 			taskResponse := o.ProcessNewTaskCreatedLog(newTaskCreatedLog)
-			err := o.SignTaskResponse(taskResponse)
+			sig, err := o.SignTaskResponse(taskResponse)
 			if err != nil {
 				continue
 			}
+			o.logger.Info("SignTaskResponse sig:", sig)
+
+			//go o.SendSignedTaskResponseToExocore(sig)
 		}
 	}
 }
@@ -215,13 +213,13 @@ func (o *Operator) ProcessNewTaskCreatedLog(newTaskCreatedLog *cstaskmanager.Con
 	return taskResponse
 }
 
-func (o *Operator) SignTaskResponse(taskResponse *core.TaskResponse) error {
+func (o *Operator) SignTaskResponse(taskResponse *core.TaskResponse) (string, error) {
 	taskResponseHash, err := core.GetTaskResponseDigest(taskResponse)
 	if err != nil {
 		o.logger.Error("Error getting task response header hash. skipping task (this is not expected and should be investigated)", "err", err)
-		return err
+		return "", err
 	}
-	_ = o.blsKeypair.SignMessage(taskResponseHash)
-
-	return nil
+	sig := o.blsKeypair.Sign(taskResponseHash[:])
+	sigStr := hex.EncodeToString(sig.Marshal())
+	return sigStr, nil
 }

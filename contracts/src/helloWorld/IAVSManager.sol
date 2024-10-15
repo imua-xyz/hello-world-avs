@@ -133,7 +133,7 @@ interface IAVSManager {
     /// @dev SubmitProof ,After processing the task contract, aggregate the signature and submit the processed proof
     /// @param taskId The task ID of the task.
     /// @param taskContractAddress The contract address of AVSTask.
-    /// @param aggregator The aggregator address.
+    /// @param avs The avs address.
     /// @param avsAddress The address of AVS.
     /// @param operatorStatus The status and proof of operators.
     function submitProof(
@@ -307,7 +307,7 @@ interface IAVSManager {
     /// @dev SubmitProof Emitted when task contract submit proof.
     /// @param taskContractAddress The contract address of AVSTask.
     /// @param taskId The task ID of the task.
-    /// @param aggregator The aggregator address.
+    /// @param avs The avs address.
     /// @param avsAddress The address of AVS.
     /// @param operatorStatuses The status and proof of operators.
     event SubmitProof(
