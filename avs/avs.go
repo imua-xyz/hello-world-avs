@@ -39,7 +39,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 
 	ethRpcClient, err := eth.NewClient(c.EthRpcUrl)
 	if err != nil {
-		logger.Errorf("Cannot create http ethclient", "err", err)
+		logger.Error("Cannot create http ethclient", "err", err)
 		return nil, err
 	}
 	chainId, err := ethRpcClient.ChainID(context.Background())
@@ -68,8 +68,26 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		logger,
 		txMgr)
 	if err != nil {
-		logger.Errorf("Cannot create avsWriter", "err", err)
+		logger.Error("Cannot create avsWriter", "err", err)
 		return nil, err
+	}
+
+	_, err = avsWriter.RegisterAVSToExocore(context.Background(),
+		avsName,
+		c.MinStakeAmount,
+		common.HexToAddress(c.AVSAddress),
+		common.HexToAddress("0x0000000000000000000000000000000000000000"),
+		common.HexToAddress("0x0000000000000000000000000000000000000000"),
+		c.AvsOwnerAddresses,
+		c.AssetIds,
+		c.AvsUnbondingPeriod,
+		c.MinSelfDelegation,
+		c.EpochIdentifier,
+		c.Params,
+	)
+	if err != nil {
+		logger.Error("register Avs failed ", "err", err)
+		return &Avs{}, err
 	}
 
 	return &Avs{
@@ -79,6 +97,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 }
 
 func (avs *Avs) Start(ctx context.Context) error {
+
 	avs.logger.Infof("Starting avs.")
 	ticker := time.NewTicker(50 * time.Second)
 	avs.logger.Infof("Avs owner set to send new task every 50 seconds...")

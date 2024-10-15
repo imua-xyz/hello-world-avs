@@ -14,6 +14,7 @@ import (
 	sdkecdsa "github.com/ExocoreNetwork/exocore-sdk/crypto/ecdsa"
 	sdklogging "github.com/ExocoreNetwork/exocore-sdk/logging"
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/crypto"
 	blscommon "github.com/prysmaticlabs/prysm/v4/crypto/bls/common"
 	"math/big"
 	"time"
@@ -62,12 +63,13 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	var ethRpcClient, ethWsClient eth.EthClient
 	ethRpcClient, err = eth.NewClient(c.EthRpcUrl)
 	if err != nil {
-		logger.Errorf("Cannot create http ethclient", "err", err)
+		logger.Error("can not create http eth client", "err", err)
+
 		return nil, err
 	}
 	ethWsClient, err = eth.NewClient(c.EthWsUrl)
 	if err != nil {
-		logger.Errorf("Cannot create ws ethclient", "err", err)
+		logger.Error("Cannot create ws eth client", "err", err)
 		return nil, err
 	}
 
@@ -77,7 +79,7 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	}
 	blsKeyPair, err := bls.ReadPrivateKeyFromFile(c.BlsPrivateKeyStorePath, blsKeyPassword)
 	if err != nil {
-		logger.Errorf("Cannot parse bls private key", "err", err)
+		logger.Error("Cannot parse bls private key", "err", err)
 		return nil, err
 	}
 	// TODO(samlaf): should we add the chainId to the config instead?
@@ -161,6 +163,13 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 }
 
 func (o *Operator) Start(ctx context.Context) error {
+	// TODO check operator status
+	// 1.operator register  exocore via cosmos tx
+	// 2.operator optin avs  via cosmos tx
+	// 3.operator accept staker delegation so that avs voting power is not 0, otherwise the task cannot be created via cosmos tx
+	// 4.operator register BLSPublicKey  via evm tx
+	// 5.operator sumit task parse via cosmos tx
+
 	//operatorIsRegistered, err := o.avsReader.IsOperatorRegistered(&bind.CallOpts{}, o.operatorAddr)
 	//if err != nil {
 	//	o.logger.Error("Error checking if operator is registered", "err", err)
@@ -171,6 +180,21 @@ func (o *Operator) Start(ctx context.Context) error {
 	//	// that hides the actual error message. This error msg is more explicit and doesn't require showing a stack trace to the user.
 	//	return fmt.Errorf("operator is not registered. Registering operator using the operator-cli before starting operator")
 	//}
+
+	// operator register BLSPublicKey  via evm tx
+	msgBytes := crypto.Keccak256Hash([]byte("hello-avs")).Bytes()
+	sig := o.blsKeypair.Sign(msgBytes)
+	_, err := o.avsWriter.RegisterBLSPublicKey(
+		context.Background(),
+		o.operatorAddr.String(),
+		o.blsKeypair.PublicKey().Marshal(),
+		sig.Marshal(),
+		msgBytes)
+
+	if err != nil {
+		o.logger.Error("operator failed to registerBLSPublicKey", "err", err)
+		return err
+	}
 
 	o.logger.Infof("Starting operator.")
 
@@ -202,16 +226,6 @@ func (o *Operator) Start(ctx context.Context) error {
 		}
 		time.Sleep(2 * time.Second) // 等待一秒钟后再次查询
 	}
-
-	//case newTaskCreatedLog := <-o.newTaskCreatedChan:
-	//	taskResponse := o.ProcessNewTaskCreatedLog(newTaskCreatedLog)
-	//	sig, err := o.SignTaskResponse(taskResponse)
-	//	if err != nil {
-	//		continue
-	//	}
-	//	o.logger.Info("SignTaskResponse sig:", sig)
-	//
-	//	//go o.SendSignedTaskResponseToExocore(sig)
 
 }
 func (o *Operator) GetLog(height int64) {
@@ -257,23 +271,12 @@ func (o *Operator) GetLog(height int64) {
 			//taskChallengePeriod := eventArgs[4].(uint64)
 			//thresholdPercentage := eventArgs[5].(uint64)
 			//taskStatisticalPeriod := eventArgs[6].(uint64)
-			//fmt.Println(data)
-			//fmt.Println(eventArgs)
-			//
-			//fmt.Printf("Task ID: %v", taskId)
-			//fmt.Printf("Issuer: %s", issuer.Hex())
-			//fmt.Printf(name)
-			//fmt.Printf("Task Response Period: %d", taskResponsePeriod)
-			//fmt.Printf("Task Challenge Period: %d", taskChallengePeriod)
-			//fmt.Printf("Threshold Percentage: %d", thresholdPercentage)
-			//fmt.Printf("Task Statistical Period: %d", taskStatisticalPeriod)
 		}
 	}
 
 }
 
-// ProcessNewTaskCreatedLog Takes a NewTaskCreatedLog struct as input and returns a TaskResponseHeader struct.
-// The TaskResponseHeader struct is the struct that is signed and sent to the exocore as a task response.
+// ProcessNewTaskCreatedLog TaskResponse is the struct that is signed and sent to the exocore as a task response.
 func (o *Operator) ProcessNewTaskCreatedLog(eventArgs []interface{}) *core.TaskResponse {
 	o.logger.Debug("Received new task", "task", eventArgs)
 	o.logger.Info("Received new task",

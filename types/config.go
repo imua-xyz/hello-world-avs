@@ -21,4 +21,12 @@ type NodeConfig struct {
 	RegisterOperatorOnStartup        bool   `yaml:"register_operator_on_startup"`
 	NodeApiIpPortAddress             string `yaml:"node_api_ip_port_address"`
 	EnableNodeApi                    bool   `yaml:"enable_node_api"`
+	// register avs parameters
+	MinStakeAmount     uint64   `yaml:"min_stake_amount"`
+	AvsOwnerAddresses  []string `yaml:"avs_owner_addresses"`
+	AssetIds           []string `yaml:"asset_ids"`
+	AvsUnbondingPeriod uint64   `yaml:"avs_unbonding_period"`
+	MinSelfDelegation  uint64   `yaml:"min_self_delegation"`
+	EpochIdentifier    string   `yaml:"epoch_identifier"`
+	Params             []uint64 `yaml:"params"`
 }

@@ -30,6 +30,14 @@ type EXOWriter interface {
 		params []uint64,
 	) (*gethtypes.Receipt, error)
 
+	RegisterBLSPublicKey(
+		ctx context.Context,
+		name string,
+		pubKey []byte,
+		pubKeyRegistrationSignature []byte,
+		pubKeyRegistrationMessageHash []byte,
+	) (*gethtypes.Receipt, error)
+
 	CreateNewTask(
 		ctx context.Context,
 		name string,
@@ -125,6 +133,34 @@ func (w *EXOChainWriter) RegisterAVSToExocore(
 		minSelfDelegation,
 		epochIdentifier,
 		params)
+	if err != nil {
+		return nil, err
+	}
+	receipt, err := w.txMgr.Send(ctx, tx)
+	if err != nil {
+		return nil, errors.New("failed to send tx with err: " + err.Error())
+	}
+	w.logger.Infof("tx hash: %s", tx.Hash().String())
+
+	return receipt, nil
+}
+func (w *EXOChainWriter) RegisterBLSPublicKey(
+	ctx context.Context,
+	name string,
+	pubKey []byte,
+	pubKeyRegistrationSignature []byte,
+	pubKeyRegistrationMessageHash []byte,
+) (*gethtypes.Receipt, error) {
+	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()
+	if err != nil {
+		return nil, err
+	}
+	tx, err := w.avsManager.RegisterBLSPublicKey(
+		noSendTxOpts,
+		name,
+		pubKey,
+		pubKeyRegistrationSignature,
+		pubKeyRegistrationMessageHash)
 	if err != nil {
 		return nil, err
 	}
