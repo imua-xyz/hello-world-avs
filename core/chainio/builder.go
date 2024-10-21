@@ -88,7 +88,7 @@ func (config *BuildAllConfig) buildExoClients(
 		ethHttpClient,
 	)
 
-	elChainWriter := NewELChainWriter(
+	exoChainWriter := NewExoChainWriter(
 		*exoContractBindings.AVSManager,
 		exoChainReader,
 		ethHttpClient,
@@ -106,10 +106,10 @@ func (config *BuildAllConfig) buildExoClients(
 		logger,
 	)
 	if err != nil {
-		logger.Error("Failed to create ELChainSubscriber", "err", err)
+		logger.Error("Failed to create ExoChainSubscriber", "err", err)
 		return nil, nil, nil, err
 	}
-	return exoChainReader, elChainWriter, avsRegistrySubscriber, err
+	return exoChainReader, exoChainWriter, avsRegistrySubscriber, err
 }
 
 // Very basic validation that makes sure all fields are nonempty

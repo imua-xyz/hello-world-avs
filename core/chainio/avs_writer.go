@@ -72,7 +72,7 @@ type EXOChainWriter struct {
 
 var _ EXOWriter = (*EXOChainWriter)(nil)
 
-func NewELChainWriter(
+func NewExoChainWriter(
 	avsManager avs.Contractavsservice,
 	exoChainReader EXOReader,
 	ethClient eth.EthClient,
@@ -88,7 +88,7 @@ func NewELChainWriter(
 	}
 }
 
-func BuildELChainWriter(
+func BuildExoChainWriter(
 	avsAddr gethcommon.Address,
 	ethClient eth.EthClient,
 	logger logging.Logger,
@@ -102,14 +102,14 @@ func BuildELChainWriter(
 	if err != nil {
 		return nil, err
 	}
-	elChainReader := NewExoChainReader(
+	exoChainReader := NewExoChainReader(
 		*exoContractBindings.AVSManager,
 		logger,
 		ethClient,
 	)
-	return NewELChainWriter(
+	return NewExoChainWriter(
 		*exoContractBindings.AVSManager,
-		elChainReader,
+		exoChainReader,
 		ethClient,
 		logger,
 		txMgr,

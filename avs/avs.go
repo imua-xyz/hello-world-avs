@@ -64,7 +64,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 	}
 
 	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, common.HexToAddress(c.AVSOwnerAddress))
-	avsWriter, err := chain.BuildELChainWriter(
+	avsWriter, err := chain.BuildExoChainWriter(
 		common.HexToAddress(c.AVSAddress),
 		ethRpcClient,
 		logger,

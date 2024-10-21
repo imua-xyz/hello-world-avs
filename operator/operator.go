@@ -124,7 +124,7 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		ethRpcClient,
 		logger)
 
-	avsWriter, _ := chain.BuildELChainWriter(
+	avsWriter, _ := chain.BuildExoChainWriter(
 		common.HexToAddress(c.AVSAddress),
 		ethRpcClient,
 		logger,
