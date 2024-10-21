@@ -46,6 +46,20 @@ type EXOWriter interface {
 		thresholdPercentage uint64,
 		taskStatisticalPeriod uint64,
 	) (*gethtypes.Receipt, error)
+
+	OperatorSubmitTask(
+		ctx context.Context,
+		taskID uint64,
+		taskResponse []byte,
+		blsSignature []byte,
+		taskContractAddress string,
+		stage string,
+	) (*gethtypes.Receipt, error)
+
+	RegisterOperatorToExocore(
+		ctx context.Context,
+		metaInfo string,
+	) (*gethtypes.Receipt, error)
 }
 
 type EXOChainWriter struct {
@@ -191,6 +205,60 @@ func (w *EXOChainWriter) CreateNewTask(
 		taskChallengePeriod,
 		thresholdPercentage,
 		taskStatisticalPeriod)
+	if err != nil {
+		return nil, err
+	}
+	receipt, err := w.txMgr.Send(ctx, tx)
+	if err != nil {
+		return nil, errors.New("failed to send tx with err: " + err.Error())
+	}
+	w.logger.Infof("tx hash: %s", tx.Hash().String())
+
+	return receipt, nil
+}
+
+func (w *EXOChainWriter) OperatorSubmitTask(
+	ctx context.Context,
+	taskID uint64,
+	taskResponse []byte,
+	blsSignature []byte,
+	taskContractAddress string,
+	stage string,
+) (*gethtypes.Receipt, error) {
+	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()
+	if err != nil {
+		return nil, err
+	}
+	tx, err := w.avsManager.OperatorSubmitTask(
+		noSendTxOpts,
+		taskID,
+		taskResponse,
+		blsSignature,
+		gethcommon.HexToAddress(taskContractAddress),
+		stage)
+	if err != nil {
+		return nil, err
+	}
+	receipt, err := w.txMgr.Send(ctx, tx)
+	if err != nil {
+		return nil, errors.New("failed to send tx with err: " + err.Error())
+	}
+	w.logger.Infof("tx hash: %s", tx.Hash().String())
+
+	return receipt, nil
+}
+
+func (w *EXOChainWriter) RegisterOperatorToExocore(
+	ctx context.Context,
+	metaInfo string,
+) (*gethtypes.Receipt, error) {
+	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()
+	if err != nil {
+		return nil, err
+	}
+	tx, err := w.avsManager.RegisterOperatorToExocore(
+		noSendTxOpts,
+		metaInfo)
 	if err != nil {
 		return nil, err
 	}

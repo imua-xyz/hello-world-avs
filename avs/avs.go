@@ -9,6 +9,7 @@ import (
 	"github.com/ExocoreNetwork/exocore-sdk/logging"
 	sdklogging "github.com/ExocoreNetwork/exocore-sdk/logging"
 	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"math/rand"
 	"time"
@@ -21,6 +22,7 @@ const (
 type Avs struct {
 	logger    logging.Logger
 	avsWriter chain.EXOWriter
+	avsReader chain.EXOReader
 }
 
 // NewAvs creates a new Avs with the provided config.
@@ -62,7 +64,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 	}
 
 	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, common.HexToAddress(c.AVSOwnerAddress))
-	avsWriter, _ := chain.BuildELChainWriter(
+	avsWriter, err := chain.BuildELChainWriter(
 		common.HexToAddress(c.AVSAddress),
 		ethRpcClient,
 		logger,
@@ -72,32 +74,47 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		return nil, err
 	}
 
-	_, err = avsWriter.RegisterAVSToExocore(context.Background(),
-		avsName,
-		c.MinStakeAmount,
+	avsReader, err := chain.BuildExoChainReader(
 		common.HexToAddress(c.AVSAddress),
-		common.HexToAddress("0x0000000000000000000000000000000000000000"),
-		common.HexToAddress("0x0000000000000000000000000000000000000000"),
-		c.AvsOwnerAddresses,
-		c.AssetIds,
-		c.AvsUnbondingPeriod,
-		c.MinSelfDelegation,
-		c.EpochIdentifier,
-		c.Params,
-	)
+		ethRpcClient,
+		logger)
 	if err != nil {
-		logger.Error("register Avs failed ", "err", err)
-		return &Avs{}, err
+		logger.Error("Cannot create exoChainReader", "err", err)
+		return nil, err
+	}
+	info, err := avsReader.GetAVSInfo(&bind.CallOpts{}, c.AVSAddress)
+	if err != nil {
+		logger.Error("Cannot GetAVSInfo", "err", err)
+		return nil, err
+	}
+	if info == "" {
+		_, err = avsWriter.RegisterAVSToExocore(context.Background(),
+			avsName,
+			c.MinStakeAmount,
+			common.HexToAddress(c.AVSAddress),
+			common.HexToAddress("0x0000000000000000000000000000000000000000"),
+			common.HexToAddress("0x0000000000000000000000000000000000000000"),
+			c.AvsOwnerAddresses,
+			c.AssetIds,
+			c.AvsUnbondingPeriod,
+			c.MinSelfDelegation,
+			c.EpochIdentifier,
+			c.Params,
+		)
+		if err != nil {
+			logger.Error("register Avs failed ", "err", err)
+			return &Avs{}, err
+		}
 	}
 
 	return &Avs{
 		logger:    logger,
 		avsWriter: avsWriter,
+		avsReader: avsReader,
 	}, nil
 }
 
 func (avs *Avs) Start(ctx context.Context) error {
-
 	avs.logger.Infof("Starting avs.")
 	ticker := time.NewTicker(50 * time.Second)
 	avs.logger.Infof("Avs owner set to send new task every 50 seconds...")
@@ -127,7 +144,7 @@ func (avs *Avs) sendNewTask() error {
 	avs.logger.Info("Avs sending new task")
 	_, err := avs.avsWriter.CreateNewTask(
 		context.Background(),
-		generateRandomName(5),
+		GenerateRandomName(5),
 		types.TaskResponsePeriod,
 		types.TaskChallengePeriod,
 		types.ThresholdPercentage,
@@ -140,7 +157,7 @@ func (avs *Avs) sendNewTask() error {
 
 	return nil
 }
-func generateRandomName(length int) string {
+func GenerateRandomName(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	result := make([]byte, length)
 	for i := range result {

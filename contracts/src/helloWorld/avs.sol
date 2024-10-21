@@ -2,7 +2,6 @@ pragma solidity >=0.8.17;
 import "./IAVSManager.sol" as avs;
 contract AvsServiceContract {
     address public owner;
-    event DataLogged(bytes data);
     // task submitter decides on the criteria for a task to be completed
     // note that this does not mean the task was "correctly" answered (i.e. the number was squared correctly)
     //      this is for the challenge logic to verify
@@ -138,26 +137,35 @@ contract AvsServiceContract {
         return success;
     }
 
-    function getRegisteredPubkey(string memory operator) public returns (bytes memory) {
+    function operatorSubmitTask(
+        uint64 taskID,
+        bytes calldata taskResponse,
+        bytes calldata blsSignature,
+        address taskContractAddress,
+        string memory stage
+    ) public returns (bool) {
 
-
-        bytes memory data = avs.AVSMANAGER_CONTRACT.getRegisteredPubkey(
-            operator
+        bool success  = avs.AVSMANAGER_CONTRACT.operatorSubmitTask(
+            msg.sender,
+            taskID,
+            taskResponse,
+            blsSignature,
+            taskContractAddress,
+            stage
         );
-        emit DataLogged(data);
-        return data;
-        //return abi.decode(data, (bytes));
+        return success;
     }
 
-    function getOptInOperators(address avsAddress) public returns (string[] memory) {
-        string[] memory data = avs.AVSMANAGER_CONTRACT.getOptInOperators(
-            avsAddress
+    function registerOperatorToExocore(
+        string memory metaInfo
+    ) public returns (bool) {
+
+        bool success  = avs.AVSMANAGER_CONTRACT.registerOperatorToExocore(
+            msg.sender,
+            metaInfo
         );
-
-
-        return data;
+        return success;
     }
-
 
     function createNewTask(
         string memory name,
@@ -174,7 +182,7 @@ contract AvsServiceContract {
         newTask.taskStatisticalPeriod = taskStatisticalPeriod;
         newTask.thresholdPercentage = thresholdPercentage;
 
-        bool success = avs.AVSMANAGER_CONTRACT.createTask(
+        (bool success,uint64 taskID) = avs.AVSMANAGER_CONTRACT.createTask(
             msg.sender,
             name,
             abi.encodePacked(keccak256(abi.encode(newTask))),
@@ -183,9 +191,65 @@ contract AvsServiceContract {
             thresholdPercentage,
             taskStatisticalPeriod
         );
-
+        newTask.taskId = taskID;
         emit TaskCreated(newTask.taskId, msg.sender,newTask.name, newTask.taskResponsePeriod, newTask.taskChallengePeriod,newTask.thresholdPercentage,newTask.taskStatisticalPeriod);
         return success;
+    }
+
+
+    //query
+    function getOptInOperators(address avsAddress) public view returns (string[] memory) {
+        string[] memory data = avs.AVSMANAGER_CONTRACT.getOptInOperators(
+            avsAddress
+        );
+
+        return data;
+    }
+
+
+    function getRegisteredPubkey(string memory operator) public view returns (bytes memory) {
+
+
+        bytes memory data = avs.AVSMANAGER_CONTRACT.getRegisteredPubkey(
+            operator
+        );
+        return abi.decode(data, (bytes));
+    }
+
+    function getAVSUSDValue(address avsAddr) external view returns (uint256){
+        uint256  amount = avs.AVSMANAGER_CONTRACT.getAVSUSDValue(
+            avsAddr
+        );
+        return amount;
+    }
+    function getOperatorOptedUSDValue(address avsAddr,string memory operatorAddr) external view returns (uint256){
+        uint256  amount = avs.AVSMANAGER_CONTRACT.getOperatorOptedUSDValue(
+            avsAddr,
+            operatorAddr
+        );
+        return amount;
+    }
+
+    function getAVSInfo(address avsAddr) external view returns (string memory){
+        string memory epochIdentifier = avs.AVSMANAGER_CONTRACT.getAVSInfo(
+            avsAddr
+        );
+        return epochIdentifier;
+    }
+    function getTaskInfo(address taskAddr,uint64 taskID) external view returns (uint64[] memory){
+        uint64[] memory  info = avs.AVSMANAGER_CONTRACT.getTaskInfo(
+            taskAddr,
+            taskID
+        );
+        return info;
+    }
+
+    function isOperator(string memory operator) public view returns (bool) {
+
+        bool flag = avs.AVSMANAGER_CONTRACT.isOperator(
+            operator
+        );
+        return flag;
     }
 
 }
