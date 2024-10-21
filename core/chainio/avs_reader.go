@@ -42,6 +42,11 @@ type EXOReader interface {
 		opts *bind.CallOpts,
 		operator string,
 	) (bool, error)
+
+	GetCurrentEpoch(
+		opts *bind.CallOpts,
+		epochIdentifier string,
+	) (int64, error)
 }
 
 type EXOChainReader struct {
@@ -162,4 +167,14 @@ func (r *EXOChainReader) IsOperator(opts *bind.CallOpts, operator string) (bool,
 		return false, err
 	}
 	return flag, nil
+}
+func (r *EXOChainReader) GetCurrentEpoch(opts *bind.CallOpts, epochIdentifier string) (int64, error) {
+	currentEpoch, err := r.avsManager.GetCurrentEpoch(
+		opts,
+		epochIdentifier)
+	if err != nil {
+		r.logger.Error("Failed to exec IsOperator ", "err", err)
+		return 0, err
+	}
+	return currentEpoch, nil
 }

@@ -247,4 +247,9 @@ interface IAVSManager {
         string memory operatorAddr
     ) external view returns (bool);
 
+    /// @dev getCurrentEpoch obtain the specified current epoch based on epochIdentifier.
+    /// @param epochIdentifier  is a descriptive or unique identifier for the epoch
+    function getCurrentEpoch(
+        string memory epochIdentifier
+    ) external view returns (int64  currentEpoch);
 }

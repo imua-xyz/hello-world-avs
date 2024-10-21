@@ -252,4 +252,11 @@ contract AvsServiceContract {
         return flag;
     }
 
+    function getCurrentEpoch(string memory epochIdentifier) public view returns (int64) {
+
+        int64 currentEpoch = avs.AVSMANAGER_CONTRACT.getCurrentEpoch(
+            epochIdentifier
+        );
+        return currentEpoch;
+    }
 }

@@ -27,8 +27,18 @@ import (
 	"os"
 )
 
-const AvsName = "hello-world-avs-demo"
-const SemVer = "0.0.1"
+const (
+	AvsName = "hello-world-avs-demo"
+	SemVer  = "0.0.1"
+	// DayEpochID defines the identifier for a daily epoch.
+	DayEpochID = "day"
+	// HourEpochID defines the identifier for an hourly epoch.
+	HourEpochID = "hour"
+	// MinuteEpochID defines the identifier for an epoch that is a minute long.
+	MinuteEpochID = "minute"
+	// WeekEpochID defines the identifier for a weekly epoch.
+	WeekEpochID = "week"
+)
 
 type Operator struct {
 	config        types.NodeConfig
@@ -353,8 +363,16 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 	taskStatisticalPeriod := taskInfo[2]
 
 	for {
-		//TODO:need to add an RPC interface here to retrieve the current epoch
-		currentEpoch := uint64(3)
+		epochIdentifier, err := o.avsReader.GetAVSInfo(&bind.CallOpts{}, o.avsAddr.String())
+		if err != nil {
+			o.logger.Error("Cannot GetAVSInfo", "err", err)
+		}
+		num, err := o.avsReader.GetCurrentEpoch(&bind.CallOpts{}, epochIdentifier)
+		if err != nil {
+			o.logger.Error("Cannot exec GetCurrentEpoch", "err", err)
+		}
+		currentEpoch := uint64(num)
+
 		if currentEpoch > startingEpoch+taskResponsePeriod+taskStatisticalPeriod {
 			break
 		}
@@ -386,12 +404,27 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 				o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
 			}
 			return tx.BlockHash.String(), err
-		case currentEpoch > startingEpoch+taskStatisticalPeriod:
-			break
 		default:
 			o.logger.Info("currentEpoch:", currentEpoch)
 		}
-		time.Sleep(10 * time.Hour)
+
+		var sleepDuration time.Duration
+
+		switch epochIdentifier {
+		case DayEpochID:
+			sleepDuration = 24 * time.Hour // Sleep for 24 hours (1 day)
+		case HourEpochID:
+			sleepDuration = time.Hour // Sleep for 1 hour
+		case MinuteEpochID:
+			sleepDuration = time.Minute // Sleep for 1 minute
+		case WeekEpochID:
+			sleepDuration = 7 * 24 * time.Hour // Sleep for 7 days (1 week)
+		default:
+			// Handle unknown epochIdentifier
+			sleepDuration = 0
+		}
+		time.Sleep(sleepDuration)
+
 	}
 	return "", nil
 }
