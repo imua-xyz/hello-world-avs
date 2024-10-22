@@ -51,7 +51,7 @@ type EXOReader interface {
 
 type EXOChainReader struct {
 	logger     logging.Logger
-	avsManager avs.Contractavsservice
+	avsManager avs.ContracthelloWorld
 	ethClient  eth.EthClient
 }
 
@@ -59,7 +59,7 @@ type EXOChainReader struct {
 var _ EXOReader = (*EXOChainReader)(nil)
 
 func NewExoChainReader(
-	avsManager avs.Contractavsservice,
+	avsManager avs.ContracthelloWorld,
 	logger logging.Logger,
 	ethClient eth.EthClient,
 ) *EXOChainReader {

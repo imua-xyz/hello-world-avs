@@ -29,4 +29,6 @@ type NodeConfig struct {
 	MinSelfDelegation  uint64   `yaml:"min_self_delegation"`
 	EpochIdentifier    string   `yaml:"epoch_identifier"`
 	Params             []uint64 `yaml:"params"`
+	AVSRewardAddress   string   `yaml:"avs_reward_address"`
+	AVSSlashAddress    string   `yaml:"avs_slash_address"`
 }

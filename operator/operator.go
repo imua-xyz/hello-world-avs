@@ -11,7 +11,6 @@ import (
 	"github.com/ExocoreNetwork/exocore-avs/types"
 	"github.com/ExocoreNetwork/exocore-sdk/chainio/txmgr"
 	"github.com/ExocoreNetwork/exocore-sdk/crypto/bls"
-	sdkecdsa "github.com/ExocoreNetwork/exocore-sdk/crypto/ecdsa"
 	sdklogging "github.com/ExocoreNetwork/exocore-sdk/logging"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -52,7 +51,7 @@ type Operator struct {
 	blsKeypair   blscommon.SecretKey
 	operatorAddr common.Address
 	// receive new tasks in this chan (typically from listening to onchain event)
-	newTaskCreatedChan chan *avs.ContractavsserviceTaskCreated
+	newTaskCreatedChan chan *avs.ContracthelloWorldTaskCreated
 	// needed when opting in to avs (allow this service manager contract to slash operator)
 	avsAddr         common.Address
 	epochIdentifier string
@@ -95,9 +94,7 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		logger.Error("Cannot parse bls private key", "err", err)
 		return nil, err
 	}
-	// TODO(samlaf): should we add the chainId to the config instead?
-	// this way we can prevent creating a signer that signs on mainnet by mistake
-	// if the config says chainId=5, then we can only create a goerli signer
+
 	chainId, err := ethRpcClient.ChainID(context.Background())
 	if err != nil {
 		logger.Error("Cannot get chainId", "err", err)
@@ -155,20 +152,17 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		avsSubscriber:      avsSubscriber,
 		blsKeypair:         blsKeyPair,
 		operatorAddr:       common.HexToAddress(c.OperatorAddress),
-		newTaskCreatedChan: make(chan *avs.ContractavsserviceTaskCreated),
+		newTaskCreatedChan: make(chan *avs.ContracthelloWorldTaskCreated),
 		avsAddr:            common.HexToAddress(c.AVSAddress),
 		epochIdentifier:    epochIdentifier,
 	}
 
 	if c.RegisterOperatorOnStartup {
-		operatorEcdsaPrivateKey, err := sdkecdsa.ReadKey(
-			c.OperatorEcdsaPrivateKeyStorePath,
-			ecdsaKeyPassword,
-		)
+
 		if err != nil {
 			return nil, err
 		}
-		operator.registerOperatorOnStartup(operatorEcdsaPrivateKey)
+		operator.registerOperatorOnStartup()
 	}
 
 	logger.Info("Operator info",
@@ -181,22 +175,12 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 }
 
 func (o *Operator) Start(ctx context.Context) error {
-	// 1.operator register  exocore via cosmos tx
-	// 2.operator optin avs  via cosmos tx
-	// 3.operator accept staker delegation so that avs voting power is not 0, otherwise the task cannot be created via cosmos tx
-	// 4.operator register BLSPublicKey  via evm tx
-	// 5.operator sumit task parse via cosmos tx
+	// 1.operator register  exocore
+	// 2.operator optin avs
+	// 3.operator accept staker delegation so that avs voting power is not 0, otherwise the task cannot be created
+	// 4.operator register BLSPublicKey
+	// 5.operator sumit task parse
 
-	//operatorIsRegistered, err := o.avsReader.IsOperatorRegistered(&bind.CallOpts{}, o.operatorAddr)
-	//if err != nil {
-	//	o.logger.Error("Error checking if operator is registered", "err", err)
-	//	return err
-	//}
-	//if !operatorIsRegistered {
-	//	// We bubble the error all the way up instead of using logger.Fatal because logger.Fatal prints a huge stack trace
-	//	// that hides the actual error message. This error msg is more explicit and doesn't require showing a stack trace to the user.
-	//	return fmt.Errorf("operator is not registered. Registering operator using the operator-cli before starting operator")
-	//}
 	flag, err := o.avsReader.IsOperator(&bind.CallOpts{}, o.operatorAddr.String())
 	if err != nil {
 		o.logger.Error("Cannot exec IsOperator", "err", err)
@@ -260,11 +244,11 @@ func (o *Operator) Start(ctx context.Context) error {
 	o.GetLog(int64(firstHeight))
 
 	height := firstHeight
-	fmt.Printf("Event firstHeight: %v\n", firstHeight)
+	o.logger.Info("Event firstHeight: %v\n", firstHeight)
 
 	for {
 		currentHeight, err := o.ethClient.BlockNumber(context.Background())
-		fmt.Printf("Event currentHeight: %v\n", currentHeight)
+		o.logger.Info("Event currentHeight: %v\n", currentHeight)
 
 		if err != nil {
 			o.logger.Fatal(err.Error())
@@ -291,15 +275,10 @@ func (o *Operator) GetLog(height int64) {
 		o.logger.Fatal(err.Error())
 	}
 	if logs != nil {
-		contractAbi, _ := avs.ContractavsserviceMetaData.GetAbi()
+		contractAbi, _ := avs.ContracthelloWorldMetaData.GetAbi()
 		event := contractAbi.Events["TaskCreated"]
 		for _, vLog := range logs {
-			fmt.Println(vLog.BlockHash.Hex())
-			fmt.Println(vLog.BlockNumber)
-			fmt.Println(vLog.TxHash.Hex())
 			data := vLog.Data
-			fmt.Println(vLog.Topics)
-			fmt.Println(event.ID)
 
 			eventArgs, err := event.Inputs.Unpack(data)
 			if err != nil {
@@ -311,7 +290,7 @@ func (o *Operator) GetLog(height int64) {
 				if err != nil {
 					continue
 				}
-				fmt.Println(sig)
+				o.logger.Info(string(sig))
 
 				taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), taskResponse.TaskID.Uint64())
 				go o.SendSignedTaskResponseToExocore(taskResponse.TaskID.Uint64(), resBytes, sig, taskInfo)
@@ -343,12 +322,12 @@ func (o *Operator) SignTaskResponse(taskResponse *core.TaskResponse) ([]byte, []
 		return nil, nil, err
 	}
 	msgBytes := taskResponseHash[:]
-	fmt.Println("ResHash:", hex.EncodeToString(msgBytes))
+	o.logger.Info("ResHash:", hex.EncodeToString(msgBytes))
 
 	sig := o.blsKeypair.Sign(msgBytes)
 
 	sigStr := hex.EncodeToString(sig.Marshal())
-	fmt.Println("sig:", sigStr)
+	o.logger.Info("sig:", sigStr)
 
 	return sig.Marshal(), msgBytes, nil
 }

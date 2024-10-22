@@ -11,19 +11,19 @@ import (
 )
 
 type AvsRegistrySubscriber interface {
-	SubscribeToNewTasks(newTaskCreatedChan chan *avssub.ContractavsserviceTaskCreated) event.Subscription
+	SubscribeToNewTasks(newTaskCreatedChan chan *avssub.ContracthelloWorldTaskCreated) event.Subscription
 }
 
 type AvsRegistryChainSubscriber struct {
 	logger logging.Logger
-	avssub avssub.Contractavsservice
+	avssub avssub.ContracthelloWorld
 }
 
 // forces EthSubscriber to implement the chainio.Subscriber interface
 var _ AvsRegistrySubscriber = (*AvsRegistryChainSubscriber)(nil)
 
 func NewAvsRegistryChainSubscriber(
-	avssub avssub.Contractavsservice,
+	avssub avssub.ContracthelloWorld,
 	logger logging.Logger,
 ) (*AvsRegistryChainSubscriber, error) {
 	return &AvsRegistryChainSubscriber{
@@ -37,7 +37,7 @@ func BuildAvsRegistryChainSubscriber(
 	ethWsClient eth.EthClient,
 	logger logging.Logger,
 ) (*AvsRegistryChainSubscriber, error) {
-	avssub, err := avssub.NewContractavsservice(avssubAddr, ethWsClient)
+	avssub, err := avssub.NewContracthelloWorld(avssubAddr, ethWsClient)
 	if err != nil {
 		logger.Error("Failed to create BLSApkRegistry contract", "err", err)
 		return nil, err
@@ -45,7 +45,7 @@ func BuildAvsRegistryChainSubscriber(
 	return NewAvsRegistryChainSubscriber(*avssub, logger)
 }
 
-func (s *AvsRegistryChainSubscriber) SubscribeToNewTasks(newTaskCreatedChan chan *avssub.ContractavsserviceTaskCreated) event.Subscription {
+func (s *AvsRegistryChainSubscriber) SubscribeToNewTasks(newTaskCreatedChan chan *avssub.ContracthelloWorldTaskCreated) event.Subscription {
 	sub, err := s.avssub.WatchTaskCreated(
 		&bind.WatchOpts{}, newTaskCreatedChan,
 	)

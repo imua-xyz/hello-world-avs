@@ -35,16 +35,6 @@ type Config struct {
 	EcdsaPrivateKeyStorePath string `yaml:"ecdsa_private_key_store_path"`
 }
 
-func (c *Config) validate() {
-	// TODO: make sure every pointer is non-nil
-	if c.OperatorStateRetrieverAddr == common.HexToAddress("") {
-		panic("Config: BLSOperatorStateRetrieverAddr is required")
-	}
-	if c.AvsRegistryCoordinatorAddr == common.HexToAddress("") {
-		panic("Config: AvsRegistryCoordinatorAddr is required")
-	}
-}
-
 var (
 	FileFlag = cli.StringFlag{
 		Name:     "config",

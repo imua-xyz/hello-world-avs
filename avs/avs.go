@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"math/rand"
+	"os"
 	"time"
 )
 
@@ -50,14 +51,14 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		return nil, err
 	}
 
-	// ecdsaKeyPassword, ok := os.LookupEnv("OPERATOR_ECDSA_KEY_PASSWORD")
-	//if !ok {
-	//	logger.Info("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
-	//}
+	ecdsaKeyPassword, ok := os.LookupEnv("OPERATOR_ECDSA_KEY_PASSWORD")
+	if !ok {
+		logger.Info("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
+	}
 
 	signerV2, _, err := signerv2.SignerFromConfig(signerv2.Config{
 		KeystorePath: c.AVSEcdsaPrivateKeyStorePath,
-		Password:     "1",
+		Password:     ecdsaKeyPassword,
 	}, chainId)
 	if err != nil {
 		panic(err)
@@ -92,8 +93,8 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 			avsName,
 			c.MinStakeAmount,
 			common.HexToAddress(c.AVSAddress),
-			common.HexToAddress("0x0000000000000000000000000000000000000000"),
-			common.HexToAddress("0x0000000000000000000000000000000000000000"),
+			common.HexToAddress(c.AVSRewardAddress),
+			common.HexToAddress(c.AVSSlashAddress),
 			c.AvsOwnerAddresses,
 			c.AssetIds,
 			c.AvsUnbondingPeriod,

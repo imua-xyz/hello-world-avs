@@ -28,6 +28,8 @@ asset_ids:
 avs_unbonding_period: 7
 min_self_delegation: 0
 epoch_identifier: hour
+avs_reward_address: 0x0000000000000000000000000000000000000000
+avs_slash_address:  0x0000000000000000000000000000000000000000
 params:
   - 5
   - 7

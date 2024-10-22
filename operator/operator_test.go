@@ -47,7 +47,7 @@ func TestEth_getlogs(t *testing.T) {
 
 			height = currentHeight
 		}
-		time.Sleep(2 * time.Second) // 等待一秒钟后再次查询
+		time.Sleep(2 * time.Second)
 	}
 }
 
@@ -63,7 +63,7 @@ func GetLog(client eth.EthClient, address common.Address, height int64) {
 		log.Fatal(err)
 	}
 	if logs != nil {
-		contractAbi, _ := avs.ContractavsserviceMetaData.GetAbi()
+		contractAbi, _ := avs.ContracthelloWorldMetaData.GetAbi()
 		event := contractAbi.Events["TaskCreated"]
 
 		for _, vLog := range logs {
