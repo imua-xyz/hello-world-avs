@@ -10,7 +10,7 @@ import (
 
 type ExocoreContractBindings struct {
 	AvsAddr    gethcommon.Address
-	AVSManager *avs.Contractavsservice
+	AVSManager *avs.ContracthelloWorld
 }
 
 func NewExocoreContractBindings(
@@ -18,7 +18,7 @@ func NewExocoreContractBindings(
 	ethclient eth.EthClient,
 	logger logging.Logger,
 ) (*ExocoreContractBindings, error) {
-	contractAvsManager, err := avs.NewContractavsservice(avsAddr, ethclient)
+	contractAvsManager, err := avs.NewContracthelloWorld(avsAddr, ethclient)
 	if err != nil {
 		logger.Error("Failed to fetch Avs contract", "err", err)
 		return nil, err

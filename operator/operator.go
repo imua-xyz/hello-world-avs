@@ -11,37 +11,50 @@ import (
 	"github.com/ExocoreNetwork/exocore-avs/types"
 	"github.com/ExocoreNetwork/exocore-sdk/chainio/txmgr"
 	"github.com/ExocoreNetwork/exocore-sdk/crypto/bls"
-	sdkecdsa "github.com/ExocoreNetwork/exocore-sdk/crypto/ecdsa"
 	sdklogging "github.com/ExocoreNetwork/exocore-sdk/logging"
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/crypto"
 	blscommon "github.com/prysmaticlabs/prysm/v4/crypto/bls/common"
 	"math/big"
 	"time"
 
+	use "github.com/ExocoreNetwork/exocore-avs/avs"
 	"github.com/ExocoreNetwork/exocore-sdk/nodeapi"
 	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
 	"github.com/ethereum/go-ethereum/common"
 	"os"
 )
 
-const AvsName = "hello-world-avs-demo"
-const SemVer = "0.0.1"
+const (
+	AvsName = "hello-world-avs-demo"
+	SemVer  = "0.0.1"
+	// DayEpochID defines the identifier for a daily epoch.
+	DayEpochID = "day"
+	// HourEpochID defines the identifier for an hourly epoch.
+	HourEpochID = "hour"
+	// MinuteEpochID defines the identifier for an epoch that is a minute long.
+	MinuteEpochID = "minute"
+	// WeekEpochID defines the identifier for a weekly epoch.
+	WeekEpochID = "week"
+)
 
 type Operator struct {
 	config        types.NodeConfig
 	logger        sdklogging.Logger
 	ethClient     eth.EthClient
 	nodeApi       *nodeapi.NodeApi
-	avsWriter     chain.EXOWriter
-	avsReader     chain.EXOChainReader
+	avsWriter     chain.ExoWriter
+	avsReader     chain.ExoChainReader
 	avsSubscriber chain.AvsRegistrySubscriber
 
 	blsKeypair   blscommon.SecretKey
 	operatorAddr common.Address
 	// receive new tasks in this chan (typically from listening to onchain event)
-	newTaskCreatedChan chan *avs.ContractavsserviceTaskCreated
+	newTaskCreatedChan chan *avs.ContracthelloWorldTaskCreated
 	// needed when opting in to avs (allow this service manager contract to slash operator)
-	avsAddr common.Address
+	avsAddr         common.Address
+	epochIdentifier string
 }
 
 func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
@@ -62,12 +75,13 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	var ethRpcClient, ethWsClient eth.EthClient
 	ethRpcClient, err = eth.NewClient(c.EthRpcUrl)
 	if err != nil {
-		logger.Errorf("Cannot create http ethclient", "err", err)
+		logger.Error("can not create http eth client", "err", err)
+
 		return nil, err
 	}
 	ethWsClient, err = eth.NewClient(c.EthWsUrl)
 	if err != nil {
-		logger.Errorf("Cannot create ws ethclient", "err", err)
+		logger.Error("Cannot create ws eth client", "err", err)
 		return nil, err
 	}
 
@@ -77,12 +91,10 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	}
 	blsKeyPair, err := bls.ReadPrivateKeyFromFile(c.BlsPrivateKeyStorePath, blsKeyPassword)
 	if err != nil {
-		logger.Errorf("Cannot parse bls private key", "err", err)
+		logger.Error("Cannot parse bls private key", "err", err)
 		return nil, err
 	}
-	// TODO(samlaf): should we add the chainId to the config instead?
-	// this way we can prevent creating a signer that signs on mainnet by mistake
-	// if the config says chainId=5, then we can only create a goerli signer
+
 	chainId, err := ethRpcClient.ChainID(context.Background())
 	if err != nil {
 		logger.Error("Cannot get chainId", "err", err)
@@ -109,7 +121,7 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		ethRpcClient,
 		logger)
 
-	avsWriter, _ := chain.BuildELChainWriter(
+	avsWriter, _ := chain.BuildExoChainWriter(
 		common.HexToAddress(c.AVSAddress),
 		ethRpcClient,
 		logger,
@@ -125,7 +137,11 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		logger.Error("Cannot create AvsSubscriber", "err", err)
 		return nil, err
 	}
-
+	epochIdentifier, err := avsReader.GetAVSInfo(&bind.CallOpts{}, c.AVSAddress)
+	if err != nil {
+		logger.Error("Cannot GetAVSInfo", "err", err)
+		return nil, err
+	}
 	operator := &Operator{
 		config:             c,
 		logger:             logger,
@@ -136,19 +152,17 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		avsSubscriber:      avsSubscriber,
 		blsKeypair:         blsKeyPair,
 		operatorAddr:       common.HexToAddress(c.OperatorAddress),
-		newTaskCreatedChan: make(chan *avs.ContractavsserviceTaskCreated),
+		newTaskCreatedChan: make(chan *avs.ContracthelloWorldTaskCreated),
 		avsAddr:            common.HexToAddress(c.AVSAddress),
+		epochIdentifier:    epochIdentifier,
 	}
 
 	if c.RegisterOperatorOnStartup {
-		operatorEcdsaPrivateKey, err := sdkecdsa.ReadKey(
-			c.OperatorEcdsaPrivateKeyStorePath,
-			ecdsaKeyPassword,
-		)
+
 		if err != nil {
 			return nil, err
 		}
-		operator.registerOperatorOnStartup(operatorEcdsaPrivateKey)
+		operator.registerOperatorOnStartup()
 	}
 
 	logger.Info("Operator info",
@@ -161,17 +175,61 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 }
 
 func (o *Operator) Start(ctx context.Context) error {
-	//operatorIsRegistered, err := o.avsReader.IsOperatorRegistered(&bind.CallOpts{}, o.operatorAddr)
-	//if err != nil {
-	//	o.logger.Error("Error checking if operator is registered", "err", err)
-	//	return err
-	//}
-	//if !operatorIsRegistered {
-	//	// We bubble the error all the way up instead of using logger.Fatal because logger.Fatal prints a huge stack trace
-	//	// that hides the actual error message. This error msg is more explicit and doesn't require showing a stack trace to the user.
-	//	return fmt.Errorf("operator is not registered. Registering operator using the operator-cli before starting operator")
-	//}
+	// 1.operator register  exocore
+	// 2.operator optin avs
+	// 3.operator accept staker delegation so that avs voting power is not 0, otherwise the task cannot be created
+	// 4.operator register BLSPublicKey
+	// 5.operator sumit task parse
 
+	flag, err := o.avsReader.IsOperator(&bind.CallOpts{}, o.operatorAddr.String())
+	if err != nil {
+		o.logger.Error("Cannot exec IsOperator", "err", err)
+		return err
+	}
+	if !flag {
+		o.logger.Info("Operator is not registered.")
+		_, err = o.avsWriter.RegisterOperatorToExocore(context.Background(), use.GenerateRandomName(8))
+		if err != nil {
+			o.logger.Error("Avs failed to RegisterOperatorToExocore", "err", err)
+			return err
+		}
+	}
+
+	pubKey, err := o.avsReader.GetRegisteredPubkey(&bind.CallOpts{}, o.operatorAddr.String())
+	if err != nil {
+		o.logger.Error("Cannot exec GetRegisteredPubKey", "err", err)
+		return err
+	}
+
+	if pubKey == nil {
+		// operator register BLSPublicKey  via evm tx
+		msgBytes := crypto.Keccak256Hash([]byte("hello-avs")).Bytes()
+		sig := o.blsKeypair.Sign(msgBytes)
+		_, err = o.avsWriter.RegisterBLSPublicKey(
+			context.Background(),
+			o.operatorAddr.String(),
+			o.blsKeypair.PublicKey().Marshal(),
+			sig.Marshal(),
+			msgBytes)
+
+		if err != nil {
+			o.logger.Error("operator failed to registerBLSPublicKey", "err", err)
+			return err
+		}
+	}
+
+	// check operator delegation usd amount
+
+	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), o.operatorAddr.String())
+	if err != nil {
+		o.logger.Error("Cannot exec IsOperator", "err", err)
+		return err
+	}
+
+	if amount.IsZero() {
+		o.logger.Error("amount is zero,please delegate amount to the current operator  ", "amount", amount)
+		return err
+	}
 	o.logger.Infof("Starting operator.")
 
 	if o.config.EnableNodeApi {
@@ -186,11 +244,11 @@ func (o *Operator) Start(ctx context.Context) error {
 	o.GetLog(int64(firstHeight))
 
 	height := firstHeight
-	fmt.Printf("Event firstHeight: %v\n", firstHeight)
+	o.logger.Info("Event firstHeight: %v\n", firstHeight)
 
 	for {
 		currentHeight, err := o.ethClient.BlockNumber(context.Background())
-		fmt.Printf("Event currentHeight: %v\n", currentHeight)
+		o.logger.Info("Event currentHeight: %v\n", currentHeight)
 
 		if err != nil {
 			o.logger.Fatal(err.Error())
@@ -200,18 +258,9 @@ func (o *Operator) Start(ctx context.Context) error {
 
 			height = currentHeight
 		}
-		time.Sleep(2 * time.Second) // 等待一秒钟后再次查询
-	}
+		time.Sleep(2 * time.Second) // Wait for 2 seconds and check again
 
-	//case newTaskCreatedLog := <-o.newTaskCreatedChan:
-	//	taskResponse := o.ProcessNewTaskCreatedLog(newTaskCreatedLog)
-	//	sig, err := o.SignTaskResponse(taskResponse)
-	//	if err != nil {
-	//		continue
-	//	}
-	//	o.logger.Info("SignTaskResponse sig:", sig)
-	//
-	//	//go o.SendSignedTaskResponseToExocore(sig)
+	}
 
 }
 func (o *Operator) GetLog(height int64) {
@@ -226,15 +275,10 @@ func (o *Operator) GetLog(height int64) {
 		o.logger.Fatal(err.Error())
 	}
 	if logs != nil {
-		contractAbi, _ := avs.ContractavsserviceMetaData.GetAbi()
+		contractAbi, _ := avs.ContracthelloWorldMetaData.GetAbi()
 		event := contractAbi.Events["TaskCreated"]
 		for _, vLog := range logs {
-			fmt.Println(vLog.BlockHash.Hex())
-			fmt.Println(vLog.BlockNumber)
-			fmt.Println(vLog.TxHash.Hex())
 			data := vLog.Data
-			fmt.Println(vLog.Topics)
-			fmt.Println(event.ID)
 
 			eventArgs, err := event.Inputs.Unpack(data)
 			if err != nil {
@@ -242,38 +286,21 @@ func (o *Operator) GetLog(height int64) {
 			}
 			if eventArgs != nil {
 				taskResponse := o.ProcessNewTaskCreatedLog(eventArgs)
-
-				sig, err := o.SignTaskResponse(taskResponse)
+				sig, resBytes, err := o.SignTaskResponse(taskResponse)
 				if err != nil {
 					continue
 				}
-				fmt.Println(sig)
-				//go o.SendSignedTaskResponseToExocore(sig)
+				o.logger.Info(string(sig))
+
+				taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), taskResponse.TaskID.Uint64())
+				go o.SendSignedTaskResponseToExocore(context.Background(), taskResponse.TaskID.Uint64(), resBytes, sig, taskInfo)
 			}
-			//taskId := eventArgs[0].(*big.Int)
-			//issuer := eventArgs[1].(common.Address)
-			//name := eventArgs[2].(string)
-			//taskResponsePeriod := eventArgs[3].(uint64)
-			//taskChallengePeriod := eventArgs[4].(uint64)
-			//thresholdPercentage := eventArgs[5].(uint64)
-			//taskStatisticalPeriod := eventArgs[6].(uint64)
-			//fmt.Println(data)
-			//fmt.Println(eventArgs)
-			//
-			//fmt.Printf("Task ID: %v", taskId)
-			//fmt.Printf("Issuer: %s", issuer.Hex())
-			//fmt.Printf(name)
-			//fmt.Printf("Task Response Period: %d", taskResponsePeriod)
-			//fmt.Printf("Task Challenge Period: %d", taskChallengePeriod)
-			//fmt.Printf("Threshold Percentage: %d", thresholdPercentage)
-			//fmt.Printf("Task Statistical Period: %d", taskStatisticalPeriod)
 		}
 	}
 
 }
 
-// ProcessNewTaskCreatedLog Takes a NewTaskCreatedLog struct as input and returns a TaskResponseHeader struct.
-// The TaskResponseHeader struct is the struct that is signed and sent to the exocore as a task response.
+// ProcessNewTaskCreatedLog TaskResponse is the struct that is signed and sent to the exocore as a task response.
 func (o *Operator) ProcessNewTaskCreatedLog(eventArgs []interface{}) *core.TaskResponse {
 	o.logger.Debug("Received new task", "task", eventArgs)
 	o.logger.Info("Received new task",
@@ -287,20 +314,124 @@ func (o *Operator) ProcessNewTaskCreatedLog(eventArgs []interface{}) *core.TaskR
 	return taskResponse
 }
 
-func (o *Operator) SignTaskResponse(taskResponse *core.TaskResponse) (string, error) {
+func (o *Operator) SignTaskResponse(taskResponse *core.TaskResponse) ([]byte, []byte, error) {
 
 	taskResponseHash, err := core.GetTaskResponseDigestEncodeByjson(*taskResponse)
 	if err != nil {
 		o.logger.Error("Error SignTaskResponse with getting task response header hash. skipping task (this is not expected and should be investigated)", "err", err)
-		return "", err
+		return nil, nil, err
 	}
 	msgBytes := taskResponseHash[:]
-	fmt.Println("ResHash:", hex.EncodeToString(msgBytes))
+	o.logger.Info("ResHash:", hex.EncodeToString(msgBytes))
 
 	sig := o.blsKeypair.Sign(msgBytes)
 
 	sigStr := hex.EncodeToString(sig.Marshal())
-	fmt.Println("sig:", sigStr)
+	o.logger.Info("sig:", sigStr)
 
-	return sigStr, nil
+	return sig.Marshal(), msgBytes, nil
+}
+
+func (o *Operator) SendSignedTaskResponseToExocore(
+	ctx context.Context,
+	taskId uint64,
+	taskResponse []byte,
+	blsSignature []byte,
+	taskInfo []uint64) (string, error) {
+
+	startingEpoch := taskInfo[0]
+	taskResponsePeriod := taskInfo[1]
+	taskStatisticalPeriod := taskInfo[2]
+
+	for {
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err() // Gracefully exit if context is canceled
+		default:
+			// Fetch the current epoch information
+			epochIdentifier, err := o.avsReader.GetAVSInfo(&bind.CallOpts{}, o.avsAddr.String())
+			if err != nil {
+				o.logger.Error("Cannot GetAVSInfo", "err", err)
+				return "", fmt.Errorf("failed to get AVS info: %w", err) // Stop on persistent error
+			}
+
+			num, err := o.avsReader.GetCurrentEpoch(&bind.CallOpts{}, epochIdentifier)
+			if err != nil {
+				o.logger.Error("Cannot exec GetCurrentEpoch", "err", err)
+				return "", fmt.Errorf("failed to get current epoch: %w", err) // Stop on persistent error
+			}
+
+			currentEpoch := uint64(num)
+
+			if currentEpoch > startingEpoch+taskResponsePeriod+taskStatisticalPeriod {
+				o.logger.Info("Exiting loop: Task period has passed")
+				break
+			}
+
+			switch {
+			case currentEpoch <= startingEpoch:
+				return "", fmt.Errorf("current epoch %d is less than starting epoch %d", currentEpoch, startingEpoch)
+
+			case currentEpoch <= startingEpoch+taskResponsePeriod:
+				o.logger.Info("Submitting task response for task response period")
+				tx, err := o.avsWriter.OperatorSubmitTask(
+					ctx,
+					taskId,
+					nil,
+					blsSignature,
+					o.avsAddr.String(),
+					"1")
+				if err != nil {
+					o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
+					return "", fmt.Errorf("failed to submit task during taskResponsePeriod: %w", err)
+				}
+				return tx.BlockHash.String(), nil
+
+			case currentEpoch <= startingEpoch+taskStatisticalPeriod && currentEpoch > startingEpoch+taskResponsePeriod:
+				o.logger.Info("Submitting task response for statistical period")
+				tx, err := o.avsWriter.OperatorSubmitTask(
+					ctx,
+					taskId,
+					taskResponse,
+					blsSignature,
+					o.avsAddr.String(),
+					"2")
+				if err != nil {
+					o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
+					return "", fmt.Errorf("failed to submit task during statistical period: %w", err)
+				}
+				return tx.BlockHash.String(), nil
+
+			default:
+				o.logger.Info("Current epoch not within expected range", "currentEpoch", currentEpoch)
+			}
+
+			// Dynamic sleep based on the epoch identifier
+			var sleepDuration time.Duration
+			switch epochIdentifier {
+			case DayEpochID:
+				sleepDuration = 24 * time.Hour
+			case HourEpochID:
+				sleepDuration = time.Hour
+			case MinuteEpochID:
+				sleepDuration = time.Minute
+			case WeekEpochID:
+				sleepDuration = 7 * 24 * time.Hour
+			default:
+				o.logger.Warn("Unknown epoch identifier", "epochIdentifier", epochIdentifier)
+				sleepDuration = time.Minute // Default to a safe short duration
+			}
+
+			// Use a ticker instead of time.Sleep for more control and graceful handling
+			ticker := time.NewTicker(sleepDuration)
+			select {
+			case <-ticker.C:
+				// Sleep completed, continue loop
+				ticker.Stop()
+			case <-ctx.Done():
+				ticker.Stop()
+				return "", ctx.Err() // Handle cancellation
+			}
+		}
+	}
 }

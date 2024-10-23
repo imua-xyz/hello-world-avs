@@ -23,7 +23,7 @@ func main() {
 		{
 			Name:    "register-operator-with-avs",
 			Aliases: []string{"r"},
-			Usage:   "registers bls keys with pubkey-compendium, opts into slashing by avs service-manager, and registers operators with avs registry",
+			Usage:   "operator opt-in avs ",
 			Action:  actions.RegisterOperatorWithAvs,
 		},
 		{

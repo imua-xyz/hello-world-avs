@@ -2,19 +2,16 @@ package chainio
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"errors"
 	avs "github.com/ExocoreNetwork/exocore-avs/contracts/bindings/avs"
 	"github.com/ExocoreNetwork/exocore-avs/core/chainio/eth"
 	"github.com/ExocoreNetwork/exocore-sdk/chainio/txmgr"
 	"github.com/ExocoreNetwork/exocore-sdk/logging"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
-	"math/big"
 )
 
-type EXOWriter interface {
+type ExoWriter interface {
 	RegisterAVSToExocore(
 		ctx context.Context,
 		avsName string,
@@ -30,6 +27,14 @@ type EXOWriter interface {
 		params []uint64,
 	) (*gethtypes.Receipt, error)
 
+	RegisterBLSPublicKey(
+		ctx context.Context,
+		name string,
+		pubKey []byte,
+		pubKeyRegistrationSignature []byte,
+		pubKeyRegistrationMessageHash []byte,
+	) (*gethtypes.Receipt, error)
+
 	CreateNewTask(
 		ctx context.Context,
 		name string,
@@ -38,26 +43,44 @@ type EXOWriter interface {
 		thresholdPercentage uint64,
 		taskStatisticalPeriod uint64,
 	) (*gethtypes.Receipt, error)
+
+	OperatorSubmitTask(
+		ctx context.Context,
+		taskID uint64,
+		taskResponse []byte,
+		blsSignature []byte,
+		taskContractAddress string,
+		stage string,
+	) (*gethtypes.Receipt, error)
+
+	RegisterOperatorToExocore(
+		ctx context.Context,
+		metaInfo string,
+	) (*gethtypes.Receipt, error)
+
+	RegisterOperatorToAVS(
+		ctx context.Context,
+	) (*gethtypes.Receipt, error)
 }
 
-type EXOChainWriter struct {
-	avsManager     avs.Contractavsservice
-	exoChainReader EXOReader
+type ExoChainWriter struct {
+	avsManager     avs.ContracthelloWorld
+	exoChainReader ExoReader
 	ethClient      eth.EthClient
 	logger         logging.Logger
 	txMgr          txmgr.TxManager
 }
 
-var _ EXOWriter = (*EXOChainWriter)(nil)
+var _ ExoWriter = (*ExoChainWriter)(nil)
 
-func NewELChainWriter(
-	avsManager avs.Contractavsservice,
-	exoChainReader EXOReader,
+func NewExoChainWriter(
+	avsManager avs.ContracthelloWorld,
+	exoChainReader ExoReader,
 	ethClient eth.EthClient,
 	logger logging.Logger,
 	txMgr txmgr.TxManager,
-) *EXOChainWriter {
-	return &EXOChainWriter{
+) *ExoChainWriter {
+	return &ExoChainWriter{
 		avsManager:     avsManager,
 		exoChainReader: exoChainReader,
 		logger:         logger,
@@ -66,12 +89,12 @@ func NewELChainWriter(
 	}
 }
 
-func BuildELChainWriter(
+func BuildExoChainWriter(
 	avsAddr gethcommon.Address,
 	ethClient eth.EthClient,
 	logger logging.Logger,
 	txMgr txmgr.TxManager,
-) (*EXOChainWriter, error) {
+) (*ExoChainWriter, error) {
 	exoContractBindings, err := NewExocoreContractBindings(
 		avsAddr,
 		ethClient,
@@ -80,21 +103,21 @@ func BuildELChainWriter(
 	if err != nil {
 		return nil, err
 	}
-	elChainReader := NewExoChainReader(
+	exoChainReader := NewExoChainReader(
 		*exoContractBindings.AVSManager,
 		logger,
 		ethClient,
 	)
-	return NewELChainWriter(
+	return NewExoChainWriter(
 		*exoContractBindings.AVSManager,
-		elChainReader,
+		exoChainReader,
 		ethClient,
 		logger,
 		txMgr,
 	), nil
 }
 
-func (w *EXOChainWriter) RegisterAVSToExocore(
+func (w *ExoChainWriter) RegisterAVSToExocore(
 	ctx context.Context,
 	avsName string,
 	minStakeAmount uint64,
@@ -136,7 +159,35 @@ func (w *EXOChainWriter) RegisterAVSToExocore(
 
 	return receipt, nil
 }
-func (w *EXOChainWriter) CreateNewTask(
+func (w *ExoChainWriter) RegisterBLSPublicKey(
+	ctx context.Context,
+	name string,
+	pubKey []byte,
+	pubKeyRegistrationSignature []byte,
+	pubKeyRegistrationMessageHash []byte,
+) (*gethtypes.Receipt, error) {
+	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()
+	if err != nil {
+		return nil, err
+	}
+	tx, err := w.avsManager.RegisterBLSPublicKey(
+		noSendTxOpts,
+		name,
+		pubKey,
+		pubKeyRegistrationSignature,
+		pubKeyRegistrationMessageHash)
+	if err != nil {
+		return nil, err
+	}
+	receipt, err := w.txMgr.Send(ctx, tx)
+	if err != nil {
+		return nil, errors.New("failed to send tx with err: " + err.Error())
+	}
+	w.logger.Infof("tx hash: %s", tx.Hash().String())
+
+	return receipt, nil
+}
+func (w *ExoChainWriter) CreateNewTask(
 	ctx context.Context,
 	name string,
 	taskResponsePeriod uint64,
@@ -167,24 +218,76 @@ func (w *EXOChainWriter) CreateNewTask(
 	return receipt, nil
 }
 
-func DeployAVS(
-	ethClient eth.EthClient,
-	logger logging.Logger,
-	key ecdsa.PrivateKey,
-	chainID *big.Int,
-) (gethcommon.Address, string, error) {
-	auth, err := bind.NewKeyedTransactorWithChainID(&key, chainID)
+func (w *ExoChainWriter) OperatorSubmitTask(
+	ctx context.Context,
+	taskID uint64,
+	taskResponse []byte,
+	blsSignature []byte,
+	taskContractAddress string,
+	stage string,
+) (*gethtypes.Receipt, error) {
+	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()
 	if err != nil {
-		logger.Fatalf("Failed to make transactor: %v", err)
+		return nil, err
 	}
-
-	address, tx, _, err := avs.DeployContractavsservice(auth, ethClient)
+	tx, err := w.avsManager.OperatorSubmitTask(
+		noSendTxOpts,
+		taskID,
+		taskResponse,
+		blsSignature,
+		gethcommon.HexToAddress(taskContractAddress),
+		stage)
 	if err != nil {
-		logger.Infof("deploy err: %s", err.Error())
-		return gethcommon.Address{}, "", errors.New("failed to deploy contract with err: " + err.Error())
+		return nil, err
 	}
-	logger.Infof("tx hash: %s", tx.Hash().String())
-	logger.Infof("contract address: %s", address.String())
+	receipt, err := w.txMgr.Send(ctx, tx)
+	if err != nil {
+		return nil, errors.New("failed to send tx with err: " + err.Error())
+	}
+	w.logger.Infof("tx hash: %s", tx.Hash().String())
 
-	return address, tx.Hash().String(), nil
+	return receipt, nil
+}
+
+func (w *ExoChainWriter) RegisterOperatorToExocore(
+	ctx context.Context,
+	metaInfo string,
+) (*gethtypes.Receipt, error) {
+	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()
+	if err != nil {
+		return nil, err
+	}
+	tx, err := w.avsManager.RegisterOperatorToExocore(
+		noSendTxOpts,
+		metaInfo)
+	if err != nil {
+		return nil, err
+	}
+	receipt, err := w.txMgr.Send(ctx, tx)
+	if err != nil {
+		return nil, errors.New("failed to send tx with err: " + err.Error())
+	}
+	w.logger.Infof("tx hash: %s", tx.Hash().String())
+
+	return receipt, nil
+}
+func (w *ExoChainWriter) RegisterOperatorToAVS(
+	ctx context.Context,
+) (*gethtypes.Receipt, error) {
+	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()
+	if err != nil {
+		return nil, err
+	}
+	tx, err := w.avsManager.RegisterOperatorToAVS(
+		noSendTxOpts)
+	if err != nil {
+		return nil, err
+	}
+	receipt, err := w.txMgr.Send(ctx, tx)
+	if err != nil {
+		return nil, errors.New("failed to send tx with err: " + err.Error())
+	}
+	w.logger.Infof("tx hash: %s", tx.Hash().String())
+
+	return receipt, nil
 }

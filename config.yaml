@@ -16,3 +16,22 @@ bls_private_key_store_path: tests/keys/test.bls.key.json
 node_api_ip_port_address: 0.0.0.0:9010
 enable_node_api: true
 register_operator_on_startup: false
+  
+#register avs parameters
+min_stake_amount: 1
+avs_owner_addresses:
+  - "exo18cggcpvwspnd5c6ny8wrqxpffj5zmhklprtnph"
+  - "exo1sc9kjykz6qehauzmhjympsktdjaw4d99dksgrk"
+asset_ids:
+  - "0xdac17f958d2ee523a2206206994597c13d831ec7_0x65"
+  - "0xdac17f958d2ee523a2206206994597c13d831ec7_0x64"
+avs_unbonding_period: 7
+min_self_delegation: 0
+epoch_identifier: hour
+avs_reward_address: 0x0000000000000000000000000000000000000000
+avs_slash_address:  0x0000000000000000000000000000000000000000
+params:
+  - 5
+  - 7
+  - 8
+  - 4

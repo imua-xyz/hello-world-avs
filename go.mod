@@ -5,7 +5,8 @@ go 1.22
 toolchain go1.22.6
 
 require (
-	github.com/ExocoreNetwork/exocore-sdk v0.0.0-20241012051138-b65211b1ce87
+	cosmossdk.io/math v1.1.2
+	github.com/ExocoreNetwork/exocore-sdk v0.0.0-20241015084105-82ca86d66a08
 	github.com/ethereum/go-ethereum v1.13.8
 	github.com/prysmaticlabs/prysm/v4 v4.2.1
 	github.com/urfave/cli v1.22.14
@@ -64,5 +65,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
-
-replace github.com/ExocoreNetwork/exocore-sdk => /Users/trestin/2024/blockchain/EXO/exocore-sdk

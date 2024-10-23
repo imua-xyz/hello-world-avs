@@ -17,8 +17,8 @@ type BuildAllConfig struct {
 
 type Clients struct {
 	AvsRegistryChainSubscriber *AvsRegistryChainSubscriber
-	EXOChainReader             *EXOChainReader
-	EXOChainWriter             *EXOChainWriter
+	EXOChainReader             *ExoChainReader
+	EXOChainWriter             *ExoChainWriter
 	EthHttpClient              *eth.Client
 	EthWsClient                *eth.Client
 }
@@ -70,7 +70,7 @@ func (config *BuildAllConfig) buildExoClients(
 	ethHttpClient eth.EthClient,
 	txMgr txmgr.TxManager,
 	logger logging.Logger,
-) (*EXOChainReader, *EXOChainWriter, *AvsRegistryChainSubscriber, error) {
+) (*ExoChainReader, *ExoChainWriter, *AvsRegistryChainSubscriber, error) {
 	exoContractBindings, err := NewExocoreContractBindings(
 		gethcommon.HexToAddress(config.AvsAddr),
 		ethHttpClient,
@@ -88,7 +88,7 @@ func (config *BuildAllConfig) buildExoClients(
 		ethHttpClient,
 	)
 
-	elChainWriter := NewELChainWriter(
+	exoChainWriter := NewExoChainWriter(
 		*exoContractBindings.AVSManager,
 		exoChainReader,
 		ethHttpClient,
@@ -96,7 +96,7 @@ func (config *BuildAllConfig) buildExoClients(
 		txMgr,
 	)
 	if err != nil {
-		logger.Error("Failed to create EXOChainWriter", "err", err)
+		logger.Error("Failed to create ExoChainWriter", "err", err)
 		return nil, nil, nil, err
 	}
 
@@ -106,10 +106,10 @@ func (config *BuildAllConfig) buildExoClients(
 		logger,
 	)
 	if err != nil {
-		logger.Error("Failed to create ELChainSubscriber", "err", err)
+		logger.Error("Failed to create ExoChainSubscriber", "err", err)
 		return nil, nil, nil, err
 	}
-	return exoChainReader, elChainWriter, avsRegistrySubscriber, err
+	return exoChainReader, exoChainWriter, avsRegistrySubscriber, err
 }
 
 // Very basic validation that makes sure all fields are nonempty
