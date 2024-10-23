@@ -22,8 +22,8 @@ const (
 
 type Avs struct {
 	logger    logging.Logger
-	avsWriter chain.EXOWriter
-	avsReader chain.EXOReader
+	avsWriter chain.ExoWriter
+	avsReader chain.ExoReader
 }
 
 // NewAvs creates a new Avs with the provided config.

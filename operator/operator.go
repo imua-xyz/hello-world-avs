@@ -44,8 +44,8 @@ type Operator struct {
 	logger        sdklogging.Logger
 	ethClient     eth.EthClient
 	nodeApi       *nodeapi.NodeApi
-	avsWriter     chain.EXOWriter
-	avsReader     chain.EXOChainReader
+	avsWriter     chain.ExoWriter
+	avsReader     chain.ExoChainReader
 	avsSubscriber chain.AvsRegistrySubscriber
 
 	blsKeypair   blscommon.SecretKey
@@ -293,7 +293,7 @@ func (o *Operator) GetLog(height int64) {
 				o.logger.Info(string(sig))
 
 				taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), taskResponse.TaskID.Uint64())
-				go o.SendSignedTaskResponseToExocore(taskResponse.TaskID.Uint64(), resBytes, sig, taskInfo)
+				go o.SendSignedTaskResponseToExocore(context.Background(), taskResponse.TaskID.Uint64(), resBytes, sig, taskInfo)
 			}
 		}
 	}
@@ -333,77 +333,105 @@ func (o *Operator) SignTaskResponse(taskResponse *core.TaskResponse) ([]byte, []
 }
 
 func (o *Operator) SendSignedTaskResponseToExocore(
+	ctx context.Context,
 	taskId uint64,
 	taskResponse []byte,
 	blsSignature []byte,
 	taskInfo []uint64) (string, error) {
+
 	startingEpoch := taskInfo[0]
 	taskResponsePeriod := taskInfo[1]
 	taskStatisticalPeriod := taskInfo[2]
 
 	for {
-		epochIdentifier, err := o.avsReader.GetAVSInfo(&bind.CallOpts{}, o.avsAddr.String())
-		if err != nil {
-			o.logger.Error("Cannot GetAVSInfo", "err", err)
-		}
-		num, err := o.avsReader.GetCurrentEpoch(&bind.CallOpts{}, epochIdentifier)
-		if err != nil {
-			o.logger.Error("Cannot exec GetCurrentEpoch", "err", err)
-		}
-		currentEpoch := uint64(num)
-
-		if currentEpoch > startingEpoch+taskResponsePeriod+taskStatisticalPeriod {
-			break
-		}
-		o.logger.Info("Exit loop")
-		switch {
-		case currentEpoch <= startingEpoch:
-			return "", fmt.Errorf("current epoch %d is less than starting epoch %d", currentEpoch, startingEpoch)
-		case currentEpoch <= startingEpoch+taskResponsePeriod:
-			tx, err := o.avsWriter.OperatorSubmitTask(
-				context.Background(),
-				taskId,
-				nil,
-				blsSignature,
-				o.avsAddr.String(),
-				"1")
-			if err != nil {
-				o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
-			}
-			return tx.BlockHash.String(), err
-		case currentEpoch <= startingEpoch+taskStatisticalPeriod && currentEpoch > startingEpoch+taskResponsePeriod:
-			tx, err := o.avsWriter.OperatorSubmitTask(
-				context.Background(),
-				taskId,
-				taskResponse,
-				blsSignature,
-				o.avsAddr.String(),
-				"2")
-			if err != nil {
-				o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
-			}
-			return tx.BlockHash.String(), err
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err() // Gracefully exit if context is canceled
 		default:
-			o.logger.Info("currentEpoch:", currentEpoch)
+			// Fetch the current epoch information
+			epochIdentifier, err := o.avsReader.GetAVSInfo(&bind.CallOpts{}, o.avsAddr.String())
+			if err != nil {
+				o.logger.Error("Cannot GetAVSInfo", "err", err)
+				return "", fmt.Errorf("failed to get AVS info: %w", err) // Stop on persistent error
+			}
+
+			num, err := o.avsReader.GetCurrentEpoch(&bind.CallOpts{}, epochIdentifier)
+			if err != nil {
+				o.logger.Error("Cannot exec GetCurrentEpoch", "err", err)
+				return "", fmt.Errorf("failed to get current epoch: %w", err) // Stop on persistent error
+			}
+
+			currentEpoch := uint64(num)
+
+			if currentEpoch > startingEpoch+taskResponsePeriod+taskStatisticalPeriod {
+				o.logger.Info("Exiting loop: Task period has passed")
+				break
+			}
+
+			switch {
+			case currentEpoch <= startingEpoch:
+				return "", fmt.Errorf("current epoch %d is less than starting epoch %d", currentEpoch, startingEpoch)
+
+			case currentEpoch <= startingEpoch+taskResponsePeriod:
+				o.logger.Info("Submitting task response for task response period")
+				tx, err := o.avsWriter.OperatorSubmitTask(
+					ctx,
+					taskId,
+					nil,
+					blsSignature,
+					o.avsAddr.String(),
+					"1")
+				if err != nil {
+					o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
+					return "", fmt.Errorf("failed to submit task during taskResponsePeriod: %w", err)
+				}
+				return tx.BlockHash.String(), nil
+
+			case currentEpoch <= startingEpoch+taskStatisticalPeriod && currentEpoch > startingEpoch+taskResponsePeriod:
+				o.logger.Info("Submitting task response for statistical period")
+				tx, err := o.avsWriter.OperatorSubmitTask(
+					ctx,
+					taskId,
+					taskResponse,
+					blsSignature,
+					o.avsAddr.String(),
+					"2")
+				if err != nil {
+					o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
+					return "", fmt.Errorf("failed to submit task during statistical period: %w", err)
+				}
+				return tx.BlockHash.String(), nil
+
+			default:
+				o.logger.Info("Current epoch not within expected range", "currentEpoch", currentEpoch)
+			}
+
+			// Dynamic sleep based on the epoch identifier
+			var sleepDuration time.Duration
+			switch epochIdentifier {
+			case DayEpochID:
+				sleepDuration = 24 * time.Hour
+			case HourEpochID:
+				sleepDuration = time.Hour
+			case MinuteEpochID:
+				sleepDuration = time.Minute
+			case WeekEpochID:
+				sleepDuration = 7 * 24 * time.Hour
+			default:
+				o.logger.Warn("Unknown epoch identifier", "epochIdentifier", epochIdentifier)
+				sleepDuration = time.Minute // Default to a safe short duration
+			}
+
+			// Use a ticker instead of time.Sleep for more control and graceful handling
+			ticker := time.NewTicker(sleepDuration)
+			select {
+			case <-ticker.C:
+				// Sleep completed, continue loop
+				ticker.Stop()
+			case <-ctx.Done():
+				ticker.Stop()
+				return "", ctx.Err() // Handle cancellation
+			}
 		}
-
-		var sleepDuration time.Duration
-
-		switch epochIdentifier {
-		case DayEpochID:
-			sleepDuration = 24 * time.Hour // Sleep for 24 hours (1 day)
-		case HourEpochID:
-			sleepDuration = time.Hour // Sleep for 1 hour
-		case MinuteEpochID:
-			sleepDuration = time.Minute // Sleep for 1 minute
-		case WeekEpochID:
-			sleepDuration = 7 * 24 * time.Hour // Sleep for 7 days (1 week)
-		default:
-			// Handle unknown epochIdentifier
-			sleepDuration = 0
-		}
-		time.Sleep(sleepDuration)
-
 	}
-	return "", nil
 }

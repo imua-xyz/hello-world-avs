@@ -9,7 +9,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
-type EXOReader interface {
+type ExoReader interface {
 	GetOptInOperators(
 		opts *bind.CallOpts,
 		avsAddress string,
@@ -49,21 +49,21 @@ type EXOReader interface {
 	) (int64, error)
 }
 
-type EXOChainReader struct {
+type ExoChainReader struct {
 	logger     logging.Logger
 	avsManager avs.ContracthelloWorld
 	ethClient  eth.EthClient
 }
 
 // forces EthReader to implement the chainio.Reader interface
-var _ EXOReader = (*EXOChainReader)(nil)
+var _ ExoReader = (*ExoChainReader)(nil)
 
 func NewExoChainReader(
 	avsManager avs.ContracthelloWorld,
 	logger logging.Logger,
 	ethClient eth.EthClient,
-) *EXOChainReader {
-	return &EXOChainReader{
+) *ExoChainReader {
+	return &ExoChainReader{
 		avsManager: avsManager,
 		logger:     logger,
 		ethClient:  ethClient,
@@ -74,7 +74,7 @@ func BuildExoChainReader(
 	avsAddr gethcommon.Address,
 	ethClient eth.EthClient,
 	logger logging.Logger,
-) (*EXOChainReader, error) {
+) (*ExoChainReader, error) {
 	exoContractBindings, err := NewExocoreContractBindings(
 		avsAddr,
 		ethClient,
@@ -90,7 +90,7 @@ func BuildExoChainReader(
 	), nil
 }
 
-func (r *EXOChainReader) GetOptInOperators(
+func (r *ExoChainReader) GetOptInOperators(
 	opts *bind.CallOpts,
 	avsAddress string,
 ) ([]string, error) {
@@ -104,7 +104,7 @@ func (r *EXOChainReader) GetOptInOperators(
 	return operators, nil
 }
 
-func (r *EXOChainReader) GetRegisteredPubkey(opts *bind.CallOpts, operator string) ([]byte, error) {
+func (r *ExoChainReader) GetRegisteredPubkey(opts *bind.CallOpts, operator string) ([]byte, error) {
 	pukKey, err := r.avsManager.GetRegisteredPubkey(
 		opts,
 		operator)
@@ -115,7 +115,7 @@ func (r *EXOChainReader) GetRegisteredPubkey(opts *bind.CallOpts, operator strin
 	return pukKey, nil
 }
 
-func (r *EXOChainReader) GtAVSUSDValue(opts *bind.CallOpts, avsAddress string) (sdkmath.LegacyDec, error) {
+func (r *ExoChainReader) GtAVSUSDValue(opts *bind.CallOpts, avsAddress string) (sdkmath.LegacyDec, error) {
 	amount, err := r.avsManager.GetAVSUSDValue(
 		opts,
 		gethcommon.HexToAddress(avsAddress))
@@ -126,7 +126,7 @@ func (r *EXOChainReader) GtAVSUSDValue(opts *bind.CallOpts, avsAddress string) (
 	return sdkmath.LegacyNewDecFromBigInt(amount), nil
 }
 
-func (r *EXOChainReader) GetOperatorOptedUSDValue(opts *bind.CallOpts, avsAddress string, operatorAddr string) (sdkmath.LegacyDec, error) {
+func (r *ExoChainReader) GetOperatorOptedUSDValue(opts *bind.CallOpts, avsAddress string, operatorAddr string) (sdkmath.LegacyDec, error) {
 	amount, err := r.avsManager.GetOperatorOptedUSDValue(
 		opts,
 		gethcommon.HexToAddress(avsAddress), operatorAddr)
@@ -137,7 +137,7 @@ func (r *EXOChainReader) GetOperatorOptedUSDValue(opts *bind.CallOpts, avsAddres
 	return sdkmath.LegacyNewDecFromBigInt(amount), nil
 }
 
-func (r *EXOChainReader) GetAVSInfo(opts *bind.CallOpts, avsAddress string) (string, error) {
+func (r *ExoChainReader) GetAVSInfo(opts *bind.CallOpts, avsAddress string) (string, error) {
 	epochIdentifier, err := r.avsManager.GetAVSInfo(
 		opts,
 		gethcommon.HexToAddress(avsAddress))
@@ -147,7 +147,7 @@ func (r *EXOChainReader) GetAVSInfo(opts *bind.CallOpts, avsAddress string) (str
 	}
 	return epochIdentifier, nil
 }
-func (r *EXOChainReader) GetTaskInfo(opts *bind.CallOpts, avsAddress string, taskID uint64) ([]uint64, error) {
+func (r *ExoChainReader) GetTaskInfo(opts *bind.CallOpts, avsAddress string, taskID uint64) ([]uint64, error) {
 	info, err := r.avsManager.GetTaskInfo(
 		opts,
 		gethcommon.HexToAddress(avsAddress), taskID)
@@ -158,7 +158,7 @@ func (r *EXOChainReader) GetTaskInfo(opts *bind.CallOpts, avsAddress string, tas
 	return info, nil
 }
 
-func (r *EXOChainReader) IsOperator(opts *bind.CallOpts, operator string) (bool, error) {
+func (r *ExoChainReader) IsOperator(opts *bind.CallOpts, operator string) (bool, error) {
 	flag, err := r.avsManager.IsOperator(
 		opts,
 		operator)
@@ -168,7 +168,7 @@ func (r *EXOChainReader) IsOperator(opts *bind.CallOpts, operator string) (bool,
 	}
 	return flag, nil
 }
-func (r *EXOChainReader) GetCurrentEpoch(opts *bind.CallOpts, epochIdentifier string) (int64, error) {
+func (r *ExoChainReader) GetCurrentEpoch(opts *bind.CallOpts, epochIdentifier string) (int64, error) {
 	currentEpoch, err := r.avsManager.GetCurrentEpoch(
 		opts,
 		epochIdentifier)

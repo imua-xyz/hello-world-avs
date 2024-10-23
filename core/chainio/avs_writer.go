@@ -11,7 +11,7 @@ import (
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-type EXOWriter interface {
+type ExoWriter interface {
 	RegisterAVSToExocore(
 		ctx context.Context,
 		avsName string,
@@ -63,24 +63,24 @@ type EXOWriter interface {
 	) (*gethtypes.Receipt, error)
 }
 
-type EXOChainWriter struct {
+type ExoChainWriter struct {
 	avsManager     avs.ContracthelloWorld
-	exoChainReader EXOReader
+	exoChainReader ExoReader
 	ethClient      eth.EthClient
 	logger         logging.Logger
 	txMgr          txmgr.TxManager
 }
 
-var _ EXOWriter = (*EXOChainWriter)(nil)
+var _ ExoWriter = (*ExoChainWriter)(nil)
 
 func NewExoChainWriter(
 	avsManager avs.ContracthelloWorld,
-	exoChainReader EXOReader,
+	exoChainReader ExoReader,
 	ethClient eth.EthClient,
 	logger logging.Logger,
 	txMgr txmgr.TxManager,
-) *EXOChainWriter {
-	return &EXOChainWriter{
+) *ExoChainWriter {
+	return &ExoChainWriter{
 		avsManager:     avsManager,
 		exoChainReader: exoChainReader,
 		logger:         logger,
@@ -94,7 +94,7 @@ func BuildExoChainWriter(
 	ethClient eth.EthClient,
 	logger logging.Logger,
 	txMgr txmgr.TxManager,
-) (*EXOChainWriter, error) {
+) (*ExoChainWriter, error) {
 	exoContractBindings, err := NewExocoreContractBindings(
 		avsAddr,
 		ethClient,
@@ -117,7 +117,7 @@ func BuildExoChainWriter(
 	), nil
 }
 
-func (w *EXOChainWriter) RegisterAVSToExocore(
+func (w *ExoChainWriter) RegisterAVSToExocore(
 	ctx context.Context,
 	avsName string,
 	minStakeAmount uint64,
@@ -159,7 +159,7 @@ func (w *EXOChainWriter) RegisterAVSToExocore(
 
 	return receipt, nil
 }
-func (w *EXOChainWriter) RegisterBLSPublicKey(
+func (w *ExoChainWriter) RegisterBLSPublicKey(
 	ctx context.Context,
 	name string,
 	pubKey []byte,
@@ -187,7 +187,7 @@ func (w *EXOChainWriter) RegisterBLSPublicKey(
 
 	return receipt, nil
 }
-func (w *EXOChainWriter) CreateNewTask(
+func (w *ExoChainWriter) CreateNewTask(
 	ctx context.Context,
 	name string,
 	taskResponsePeriod uint64,
@@ -218,7 +218,7 @@ func (w *EXOChainWriter) CreateNewTask(
 	return receipt, nil
 }
 
-func (w *EXOChainWriter) OperatorSubmitTask(
+func (w *ExoChainWriter) OperatorSubmitTask(
 	ctx context.Context,
 	taskID uint64,
 	taskResponse []byte,
@@ -249,7 +249,7 @@ func (w *EXOChainWriter) OperatorSubmitTask(
 	return receipt, nil
 }
 
-func (w *EXOChainWriter) RegisterOperatorToExocore(
+func (w *ExoChainWriter) RegisterOperatorToExocore(
 	ctx context.Context,
 	metaInfo string,
 ) (*gethtypes.Receipt, error) {
@@ -271,7 +271,7 @@ func (w *EXOChainWriter) RegisterOperatorToExocore(
 
 	return receipt, nil
 }
-func (w *EXOChainWriter) RegisterOperatorToAVS(
+func (w *ExoChainWriter) RegisterOperatorToAVS(
 	ctx context.Context,
 ) (*gethtypes.Receipt, error) {
 	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()
