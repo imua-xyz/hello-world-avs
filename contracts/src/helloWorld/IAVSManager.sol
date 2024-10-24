@@ -7,46 +7,26 @@ address constant AVSMANAGER_PRECOMPILE_ADDRESS = 0x00000000000000000000000000000
 IAVSManager constant AVSMANAGER_CONTRACT = IAVSManager(
     AVSMANAGER_PRECOMPILE_ADDRESS
 );
-
 /// @author Exocore Team
 /// @title AVS-Manager Precompile Contract
 /// @dev The interface through which solidity contracts will interact with AVS-Manager
 /// @custom:address 0x0000000000000000000000000000000000000901
 interface IAVSManager {
-    event AVSRegistered(address indexed sender, string avsName, bool success);
-    event AVSUpdated(address indexed sender, string avsName, bool success);
-    event AVSDeregistered(address indexed sender, string avsName, bool success);
-    event OperatorJoined(address indexed sender, bool success);
-    event OperatorOuted(address indexed sender, bool success);
+    event AVSRegistered(address indexed sender, string avsName);
+    event AVSUpdated(address indexed sender, string avsName);
+    event AVSDeregistered(address indexed sender, string avsName);
+    event OperatorJoined(address indexed sender);
+    event OperatorOuted(address indexed sender);
     event TaskCreated(address indexed sender,uint64 taskId,address indexed taskContractAddress,string name,bytes hash,
         uint64 taskResponsePeriod,uint64 taskChallengePeriod,uint64 thresholdPercentage,uint64 taskStatisticalPeriod
     );
     event ChallengeInitiated(address indexed sender, bytes taskHash, uint64 taskID, bytes taskResponseHash,
-        string operatorAddress, bool success);
-    event PublicKeyRegistered(address indexed sender, string name, bool success);
-    event OperatorRegisteredToExocore(address indexed sender, string metaInfo, bool success);
-    event TaskSubmittedByOperator(address indexed sender, uint64 taskID, string taskResponse,
-        string blsSignature, string taskContractAddress, string stage, bool success);
+        string operatorAddress);
+    event PublicKeyRegistered(address indexed sender, string name);
+    event TaskSubmittedByOperator(address indexed sender, uint64 taskID, bytes taskResponse,
+        bytes blsSignature, address indexed taskContractAddress, uint8 phase);
 
 
-    struct TaskInfo {
-        string taskContractAddress;
-        string name;
-        bytes hash;
-        uint64 taskId;
-        uint64 taskResponsePeriod;
-        uint64 taskStatisticalPeriod;
-        uint64 taskChallengePeriod;
-        uint64 thresholdPercentage;
-        uint64 startingEpoch;
-        uint64 actualThreshold;
-        string[] optInOperators;
-        string[] signedOperators;
-        string[] noSignedOperators;
-        string[] errSignedOperators;
-        string taskTotalPower;
-        // OperatorActivePowerList is not defined here as it's not clear from the provided message
-    }
     /// @dev Register AVS contract to EXO.
     /// @param sender The external address for calling this method.
     /// @param avsName The name of AVS.
@@ -146,7 +126,7 @@ interface IAVSManager {
         uint64 taskChallengePeriod,
         uint64 thresholdPercentage,
         uint64 taskStatisticalPeriod
-    ) external returns (bool success,uint64 taskID);
+    ) external returns (uint64 taskID);
 
     /// @dev challenge ,  this function enables a challenger to raise and resolve a challenge.
     /// @param sender The external address for calling this method.
@@ -177,29 +157,21 @@ interface IAVSManager {
         bytes calldata pubkeyRegistrationMessageHash
     ) external returns (bool success);
 
-    /// @dev registerOperatorToExocore ,  this function enables  a precompile handler for creating a RegisterOperatorReq.
-    /// @param sender The external address for calling this method.
-    /// @param metaInfo The data supplied by the contract, usually ABI-encoded.
-    function registerOperatorToExocore(
-        address sender,
-        string memory metaInfo
-    ) external returns (bool success);
-
     /// @dev operatorSubmitTask ,  this function enables a operator submit a task result.
     /// @param sender The external address for calling this method.
     /// @param taskID The id of task.
     /// @param taskResponse is the task response data..
     /// @param blsSignature is the operator bls sig info..
     /// @param taskContractAddress is contract address of task.
-    /// @param stage this field is used to solve the problem of task results being copied by other operators.
-    //  It is a two-stage submission with two values, 1 and 2
+    /// @param phase this field is used to solve the problem of task results being copied by other operators.
+    //  It is a Two-Phase Commit  with two values, 0 and 1
     function operatorSubmitTask(
         address sender,
         uint64 taskID,
         bytes calldata taskResponse,
         bytes calldata blsSignature,
         address taskContractAddress,
-        string memory stage
+        uint8 phase
     ) external returns (bool success);
 
     /// QUERIES

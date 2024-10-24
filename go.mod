@@ -7,10 +7,10 @@ toolchain go1.22.6
 require (
 	cosmossdk.io/math v1.1.2
 	github.com/ExocoreNetwork/exocore-sdk v0.0.0-20241015084105-82ca86d66a08
+	github.com/cosmos/btcutil v1.0.5
 	github.com/ethereum/go-ethereum v1.13.8
 	github.com/prysmaticlabs/prysm/v4 v4.2.1
 	github.com/urfave/cli v1.22.14
-	golang.org/x/crypto v0.17.0
 )
 
 require (
@@ -55,6 +55,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611 // indirect
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect

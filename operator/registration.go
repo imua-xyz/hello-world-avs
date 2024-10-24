@@ -3,7 +3,7 @@ package operator
 import (
 	"context"
 	"encoding/json"
-	use "github.com/ExocoreNetwork/exocore-avs/avs"
+	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"strings"
 )
@@ -31,11 +31,8 @@ func (o *Operator) RegisterOperatorWithExocore() error {
 	}
 	if !flag {
 		o.logger.Info("Operator is not registered.")
-		_, err = o.avsWriter.RegisterOperatorToExocore(context.Background(), use.GenerateRandomName(8))
-		if err != nil {
-			o.logger.Error("Avs failed to RegisterOperatorToExocore", "err", err)
-			return err
-		}
+		panic(fmt.Sprintf("Operator is not registered: %s", o.operatorAddr.String()))
+
 	}
 	if err != nil {
 		o.logger.Errorf("Error registering operator with exocore")

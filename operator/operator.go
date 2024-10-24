@@ -12,6 +12,7 @@ import (
 	"github.com/ExocoreNetwork/exocore-sdk/chainio/txmgr"
 	"github.com/ExocoreNetwork/exocore-sdk/crypto/bls"
 	sdklogging "github.com/ExocoreNetwork/exocore-sdk/logging"
+	"github.com/cosmos/btcutil/bech32"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -19,7 +20,6 @@ import (
 	"math/big"
 	"time"
 
-	use "github.com/ExocoreNetwork/exocore-avs/avs"
 	"github.com/ExocoreNetwork/exocore-sdk/nodeapi"
 	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
 	"github.com/ethereum/go-ethereum/common"
@@ -181,21 +181,23 @@ func (o *Operator) Start(ctx context.Context) error {
 	// 4.operator register BLSPublicKey
 	// 5.operator sumit task parse
 
-	flag, err := o.avsReader.IsOperator(&bind.CallOpts{}, o.operatorAddr.String())
+	operatorAddress, err := SwitchEthAddressToExoAddress(o.operatorAddr.String())
+	if err != nil {
+		o.logger.Error("Cannot switch eth address to exo address", "err", err)
+		panic(err)
+	}
+
+	flag, err := o.avsReader.IsOperator(&bind.CallOpts{}, operatorAddress)
 	if err != nil {
 		o.logger.Error("Cannot exec IsOperator", "err", err)
 		return err
 	}
 	if !flag {
-		o.logger.Info("Operator is not registered.")
-		_, err = o.avsWriter.RegisterOperatorToExocore(context.Background(), use.GenerateRandomName(8))
-		if err != nil {
-			o.logger.Error("Avs failed to RegisterOperatorToExocore", "err", err)
-			return err
-		}
+		o.logger.Error("Operator is not registered.", "err", err)
+		panic(fmt.Sprintf("Operator is not registered: %s", operatorAddress))
 	}
 
-	pubKey, err := o.avsReader.GetRegisteredPubkey(&bind.CallOpts{}, o.operatorAddr.String())
+	pubKey, err := o.avsReader.GetRegisteredPubkey(&bind.CallOpts{}, operatorAddress)
 	if err != nil {
 		o.logger.Error("Cannot exec GetRegisteredPubKey", "err", err)
 		return err
@@ -220,7 +222,7 @@ func (o *Operator) Start(ctx context.Context) error {
 
 	// check operator delegation usd amount
 
-	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), o.operatorAddr.String())
+	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), operatorAddress)
 	if err != nil {
 		o.logger.Error("Cannot exec IsOperator", "err", err)
 		return err
@@ -380,7 +382,7 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 					nil,
 					blsSignature,
 					o.avsAddr.String(),
-					"1")
+					0)
 				if err != nil {
 					o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
 					return "", fmt.Errorf("failed to submit task during taskResponsePeriod: %w", err)
@@ -395,7 +397,7 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 					taskResponse,
 					blsSignature,
 					o.avsAddr.String(),
-					"2")
+					1)
 				if err != nil {
 					o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
 					return "", fmt.Errorf("failed to submit task during statistical period: %w", err)
@@ -434,4 +436,20 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 			}
 		}
 	}
+}
+
+func SwitchEthAddressToExoAddress(ethAddress string) (string, error) {
+	b, err := hex.DecodeString(ethAddress[2:])
+	if err != nil {
+		return "", fmt.Errorf("failed to decode eth address: %w", err)
+	}
+
+	// Generate exo address
+	HRP := "exo"
+	exoAddress, err := bech32.EncodeFromBase256(HRP, b)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode exo address: %w", err)
+	}
+
+	return exoAddress, nil
 }

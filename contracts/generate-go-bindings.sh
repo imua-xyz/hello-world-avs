@@ -17,7 +17,7 @@ for dir in ./contracts/src/helloWorld/; do
         filename=$(basename "$file" .sol)
 
         # Compile the contract
-        solc --bin --abi --optimize --overwrite -o "./contracts/build/$dirname" "$file"
+        solc --bin --abi  --evm-version paris  --optimize --overwrite -o "./contracts/build/$dirname" "$file"
         echo "Compiled ${dirname}/${filename}.sol"
     done
 # Generate the binding.go file using abigen
