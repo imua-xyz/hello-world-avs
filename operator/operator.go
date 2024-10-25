@@ -203,7 +203,7 @@ func (o *Operator) Start(ctx context.Context) error {
 		return err
 	}
 
-	if pubKey == nil {
+	if len(pubKey) == 0 {
 		// operator register BLSPublicKey  via evm tx
 		msgBytes := crypto.Keccak256Hash([]byte("hello-avs")).Bytes()
 		sig := o.blsKeypair.Sign(msgBytes)
