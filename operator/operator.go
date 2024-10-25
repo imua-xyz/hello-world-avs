@@ -171,7 +171,6 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	)
 
 	return operator, nil
-
 }
 
 func (o *Operator) Start(ctx context.Context) error {
@@ -221,8 +220,7 @@ func (o *Operator) Start(ctx context.Context) error {
 	}
 
 	// check operator delegation usd amount
-
-	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), operatorAddress)
+	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), o.operatorAddr.String())
 	if err != nil {
 		o.logger.Error("Cannot exec IsOperator", "err", err)
 		return err
@@ -246,28 +244,49 @@ func (o *Operator) Start(ctx context.Context) error {
 	o.GetLog(int64(firstHeight))
 
 	height := firstHeight
+	o.logger.Info("Event firstHeight: %v\n", firstHeight)
+	// Channel to receive new block heights
+	blockCh := make(chan uint64)
 
-	o.logger.Info("Event firstHeight", "firstHeight", firstHeight)
-
+	// Start a goroutine to monitor block heights
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				o.logger.Info("Stopping block monitoring")
+				close(blockCh)
+				return
+			default:
+				currentHeight, err := o.ethClient.BlockNumber(ctx)
+				if err != nil {
+					o.logger.Error("Error getting block number: %v", err)
+					continue
+				}
+				if currentHeight == height+1 {
+					blockCh <- currentHeight
+					height = currentHeight
+				}
+			}
+		}
+	}()
+	// Process new block heights as they are received
 	for {
-		currentHeight, err := o.ethClient.BlockNumber(context.Background())
-		if err != nil {
-			o.logger.Fatal(err.Error())
+		select {
+		case <-ctx.Done():
+			o.logger.Info("Context cancelled, exiting loop")
+			return nil
+		case newHeight, ok := <-blockCh:
+			if !ok {
+				o.logger.Info("Block channel closed, exiting loop")
+				return nil
+			}
+			if err := o.GetLog(int64(newHeight)); err != nil {
+				o.logger.Error("Error retrieving logs for block %d: %v", newHeight, err)
+			}
 		}
-		o.logger.Info("Event currentHeight", "height", height, "currentHeight", currentHeight)
-
-		if currentHeight == height+1 {
-			o.logger.Info("Block height increases, processing logs", "processHeight", currentHeight)
-
-			o.GetLog(int64(currentHeight))
-		}
-		height = currentHeight
-		time.Sleep(2 * time.Second) // Wait for 2 seconds and check again
-
 	}
-
 }
-func (o *Operator) GetLog(height int64) {
+func (o *Operator) GetLog(height int64) error {
 	query := ethereum.FilterQuery{
 		Addresses: []common.Address{o.avsAddr},
 		FromBlock: big.NewInt(height),
@@ -276,10 +295,10 @@ func (o *Operator) GetLog(height int64) {
 
 	logs, err := o.ethClient.FilterLogs(context.Background(), query)
 	if err != nil {
-		o.logger.Fatal(err.Error())
+		o.logger.Error(err.Error())
+		return err
 	}
-	if logs != nil && len(logs) != 0 {
-		o.logger.Info("finding new logs", "logs", logs)
+	if logs != nil {
 		contractAbi, _ := avs.ContracthelloWorldMetaData.GetAbi()
 		event := contractAbi.Events["TaskCreated"]
 		for _, vLog := range logs {
@@ -287,12 +306,14 @@ func (o *Operator) GetLog(height int64) {
 
 			eventArgs, err := event.Inputs.Unpack(data)
 			if err != nil {
-				o.logger.Fatal(err.Error())
+				o.logger.Error(err.Error())
+				return err
 			}
 			if eventArgs != nil {
 				taskResponse := o.ProcessNewTaskCreatedLog(eventArgs)
 				sig, resBytes, err := o.SignTaskResponse(taskResponse)
 				if err != nil {
+					o.logger.Error(err.Error())
 					continue
 				}
 				taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), taskResponse.TaskID)

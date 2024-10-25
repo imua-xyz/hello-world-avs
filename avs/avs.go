@@ -33,7 +33,6 @@ type Avs struct {
 }
 
 // NewAvs creates a new Avs with the provided config.
-
 func NewAvs(c *types.NodeConfig) (*Avs, error) {
 	var logLevel sdklogging.LogLevel
 	if c.Production {
