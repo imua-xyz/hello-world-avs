@@ -19,7 +19,7 @@ func TestEth_getlogs(t *testing.T) {
 	if err != nil {
 		log.Fatal("Cannot create http ethclient", "err", err)
 	}
-	// 合约地址和 ABI
+	// Contract address and ABI
 	contractAddress := common.HexToAddress("0xaD6864A88b832100750Ff35881851c943e5BAc34")
 	if err != nil {
 		log.Fatal(err)
@@ -89,7 +89,7 @@ func GetLog(client eth.EthClient, address common.Address, height int64) {
 			fmt.Println(data)
 			fmt.Println(eventArgs)
 
-			//log.Printf("Task ID: %v", taskId)
+			// log.Printf("Task ID: %v", taskId)
 			fmt.Printf("Issuer: %s", issuer.Hex())
 			fmt.Printf(name)
 			fmt.Printf("Task Response Period: %d", taskResponsePeriod)
