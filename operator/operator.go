@@ -230,7 +230,7 @@ func (o *Operator) Start(ctx context.Context) error {
 
 	if amount.IsZero() {
 		o.logger.Error("amount is zero,please delegate amount to the current operator  ", "amount", amount)
-		return err
+		// return err
 	}
 	o.logger.Infof("Starting operator.")
 

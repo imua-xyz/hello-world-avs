@@ -221,7 +221,7 @@ contract AvsServiceContract {
     }
 
     function getAVSInfo(address avsAddr) external view returns (string memory){
-        string memory epochIdentifier = avs.AVSMANAGER_CONTRACT.getAVSInfo(
+        string memory epochIdentifier = avs.AVSMANAGER_CONTRACT.getAVSEpochIdentifier(
             avsAddr
         );
         return epochIdentifier;
@@ -234,7 +234,7 @@ contract AvsServiceContract {
         return info;
     }
 
-    function isOperator(string memory operator) public view returns (bool) {
+    function isOperator(address operator) public view returns (bool) {
 
         bool flag = avs.AVSMANAGER_CONTRACT.isOperator(
             operator
