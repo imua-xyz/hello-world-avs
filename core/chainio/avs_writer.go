@@ -50,12 +50,7 @@ type ExoWriter interface {
 		taskResponse []byte,
 		blsSignature []byte,
 		taskContractAddress string,
-		stage string,
-	) (*gethtypes.Receipt, error)
-
-	RegisterOperatorToExocore(
-		ctx context.Context,
-		metaInfo string,
+		phase uint8,
 	) (*gethtypes.Receipt, error)
 
 	RegisterOperatorToAVS(
@@ -224,7 +219,7 @@ func (w *ExoChainWriter) OperatorSubmitTask(
 	taskResponse []byte,
 	blsSignature []byte,
 	taskContractAddress string,
-	stage string,
+	phase uint8,
 ) (*gethtypes.Receipt, error) {
 	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()
 	if err != nil {
@@ -236,7 +231,7 @@ func (w *ExoChainWriter) OperatorSubmitTask(
 		taskResponse,
 		blsSignature,
 		gethcommon.HexToAddress(taskContractAddress),
-		stage)
+		phase)
 	if err != nil {
 		return nil, err
 	}
@@ -249,28 +244,6 @@ func (w *ExoChainWriter) OperatorSubmitTask(
 	return receipt, nil
 }
 
-func (w *ExoChainWriter) RegisterOperatorToExocore(
-	ctx context.Context,
-	metaInfo string,
-) (*gethtypes.Receipt, error) {
-	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()
-	if err != nil {
-		return nil, err
-	}
-	tx, err := w.avsManager.RegisterOperatorToExocore(
-		noSendTxOpts,
-		metaInfo)
-	if err != nil {
-		return nil, err
-	}
-	receipt, err := w.txMgr.Send(ctx, tx)
-	if err != nil {
-		return nil, errors.New("failed to send tx with err: " + err.Error())
-	}
-	w.logger.Infof("tx hash: %s", tx.Hash().String())
-
-	return receipt, nil
-}
 func (w *ExoChainWriter) RegisterOperatorToAVS(
 	ctx context.Context,
 ) (*gethtypes.Receipt, error) {

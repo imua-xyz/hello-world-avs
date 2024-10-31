@@ -21,9 +21,15 @@ const (
 )
 
 type Avs struct {
-	logger    logging.Logger
-	avsWriter chain.ExoWriter
-	avsReader chain.ExoReader
+	logger                logging.Logger
+	avsWriter             chain.ExoWriter
+	avsReader             chain.ExoReader
+	avsAddress            string
+	createTaskInterval    int64
+	taskResponsePeriod    uint64
+	taskChallengePeriod   uint64
+	thresholdPercentage   uint64
+	taskStatisticalPeriod uint64
 }
 
 // NewAvs creates a new Avs with the provided config.
@@ -109,15 +115,21 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 	}
 
 	return &Avs{
-		logger:    logger,
-		avsWriter: avsWriter,
-		avsReader: avsReader,
+		logger:                logger,
+		avsWriter:             avsWriter,
+		avsReader:             avsReader,
+		avsAddress:            c.AVSAddress,
+		createTaskInterval:    c.CreateTaskInterval,
+		taskResponsePeriod:    c.TaskResponsePeriod,
+		taskChallengePeriod:   c.TaskChallengePeriod,
+		thresholdPercentage:   c.ThresholdPercentage,
+		taskStatisticalPeriod: c.TaskStatisticalPeriod,
 	}, nil
 }
 
 func (avs *Avs) Start(ctx context.Context) error {
 	avs.logger.Infof("Starting avs.")
-	ticker := time.NewTicker(50 * time.Second)
+	ticker := time.NewTicker(time.Duration(avs.createTaskInterval) * time.Second)
 	avs.logger.Infof("Avs owner set to send new task every 50 seconds...")
 	defer ticker.Stop()
 	taskNum := int64(1)
@@ -143,13 +155,21 @@ func (avs *Avs) Start(ctx context.Context) error {
 // sendNewTask sends a new task to the task manager contract.
 func (avs *Avs) sendNewTask() error {
 	avs.logger.Info("Avs sending new task")
-	_, err := avs.avsWriter.CreateNewTask(
+	taskPowerTotal, err := avs.avsReader.GtAVSUSDValue(&bind.CallOpts{}, avs.avsAddress)
+	if err != nil {
+		avs.logger.Error("Cannot GetAVSInfo", "err", err)
+		panic(err)
+	}
+	if taskPowerTotal.IsZero() || taskPowerTotal.IsNegative() {
+		//panic("the voting power of AVS is zero or negative")
+	}
+	_, err = avs.avsWriter.CreateNewTask(
 		context.Background(),
 		GenerateRandomName(5),
-		types.TaskResponsePeriod,
-		types.TaskChallengePeriod,
-		types.ThresholdPercentage,
-		types.TaskStatisticalPeriod)
+		avs.taskResponsePeriod,
+		avs.taskChallengePeriod,
+		avs.thresholdPercentage,
+		avs.taskStatisticalPeriod)
 
 	if err != nil {
 		avs.logger.Error("Avs failed to sendNewTask", "err", err)

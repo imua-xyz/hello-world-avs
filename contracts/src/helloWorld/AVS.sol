@@ -142,7 +142,7 @@ contract AvsServiceContract {
         bytes calldata taskResponse,
         bytes calldata blsSignature,
         address taskContractAddress,
-        string memory stage
+        uint8  phase
     ) public returns (bool) {
 
         bool success  = avs.AVSMANAGER_CONTRACT.operatorSubmitTask(
@@ -151,21 +151,12 @@ contract AvsServiceContract {
             taskResponse,
             blsSignature,
             taskContractAddress,
-            stage
+            phase
         );
         return success;
     }
 
-    function registerOperatorToExocore(
-        string memory metaInfo
-    ) public returns (bool) {
 
-        bool success  = avs.AVSMANAGER_CONTRACT.registerOperatorToExocore(
-            msg.sender,
-            metaInfo
-        );
-        return success;
-    }
 
     function createNewTask(
         string memory name,
@@ -173,7 +164,7 @@ contract AvsServiceContract {
         uint64 taskChallengePeriod,
         uint64 thresholdPercentage,
         uint64 taskStatisticalPeriod
-    ) public returns (bool) {
+    ) public returns (uint64) {
         // create a new task struct
         Task memory newTask;
         newTask.name = name;
@@ -182,7 +173,7 @@ contract AvsServiceContract {
         newTask.taskStatisticalPeriod = taskStatisticalPeriod;
         newTask.thresholdPercentage = thresholdPercentage;
 
-        (bool success,uint64 taskID) = avs.AVSMANAGER_CONTRACT.createTask(
+        uint64 taskID = avs.AVSMANAGER_CONTRACT.createTask(
             msg.sender,
             name,
             abi.encodePacked(keccak256(abi.encode(newTask))),
@@ -193,7 +184,7 @@ contract AvsServiceContract {
         );
         newTask.taskId = taskID;
         emit TaskCreated(newTask.taskId, msg.sender,newTask.name, newTask.taskResponsePeriod, newTask.taskChallengePeriod,newTask.thresholdPercentage,newTask.taskStatisticalPeriod);
-        return success;
+        return taskID;
     }
 
 
@@ -210,10 +201,9 @@ contract AvsServiceContract {
     function getRegisteredPubkey(string memory operator) public view returns (bytes memory) {
 
 
-        bytes memory data = avs.AVSMANAGER_CONTRACT.getRegisteredPubkey(
+        return avs.AVSMANAGER_CONTRACT.getRegisteredPubkey(
             operator
         );
-        return abi.decode(data, (bytes));
     }
 
     function getAVSUSDValue(address avsAddr) external view returns (uint256){
@@ -231,7 +221,7 @@ contract AvsServiceContract {
     }
 
     function getAVSInfo(address avsAddr) external view returns (string memory){
-        string memory epochIdentifier = avs.AVSMANAGER_CONTRACT.getAVSInfo(
+        string memory epochIdentifier = avs.AVSMANAGER_CONTRACT.getAVSEpochIdentifier(
             avsAddr
         );
         return epochIdentifier;
@@ -244,7 +234,7 @@ contract AvsServiceContract {
         return info;
     }
 
-    function isOperator(string memory operator) public view returns (bool) {
+    function isOperator(address operator) public view returns (bool) {
 
         bool flag = avs.AVSMANAGER_CONTRACT.isOperator(
             operator

@@ -12,6 +12,7 @@ import (
 	"github.com/ExocoreNetwork/exocore-sdk/chainio/txmgr"
 	"github.com/ExocoreNetwork/exocore-sdk/crypto/bls"
 	sdklogging "github.com/ExocoreNetwork/exocore-sdk/logging"
+	"github.com/cosmos/btcutil/bech32"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -19,7 +20,6 @@ import (
 	"math/big"
 	"time"
 
-	use "github.com/ExocoreNetwork/exocore-avs/avs"
 	"github.com/ExocoreNetwork/exocore-sdk/nodeapi"
 	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
 	"github.com/ethereum/go-ethereum/common"
@@ -181,27 +181,29 @@ func (o *Operator) Start(ctx context.Context) error {
 	// 4.operator register BLSPublicKey
 	// 5.operator sumit task parse
 
+	operatorAddress, err := SwitchEthAddressToExoAddress(o.operatorAddr.String())
+	if err != nil {
+		o.logger.Error("Cannot switch eth address to exo address", "err", err)
+		panic(err)
+	}
+
 	flag, err := o.avsReader.IsOperator(&bind.CallOpts{}, o.operatorAddr.String())
 	if err != nil {
 		o.logger.Error("Cannot exec IsOperator", "err", err)
 		return err
 	}
 	if !flag {
-		o.logger.Info("Operator is not registered.")
-		_, err = o.avsWriter.RegisterOperatorToExocore(context.Background(), use.GenerateRandomName(8))
-		if err != nil {
-			o.logger.Error("Avs failed to RegisterOperatorToExocore", "err", err)
-			return err
-		}
+		o.logger.Error("Operator is not registered.", "err", err)
+		panic(fmt.Sprintf("Operator is not registered: %s", operatorAddress))
 	}
 
-	pubKey, err := o.avsReader.GetRegisteredPubkey(&bind.CallOpts{}, o.operatorAddr.String())
+	pubKey, err := o.avsReader.GetRegisteredPubkey(&bind.CallOpts{}, operatorAddress)
 	if err != nil {
 		o.logger.Error("Cannot exec GetRegisteredPubKey", "err", err)
 		return err
 	}
 
-	if pubKey == nil {
+	if len(pubKey) == 0 {
 		// operator register BLSPublicKey  via evm tx
 		msgBytes := crypto.Keccak256Hash([]byte("hello-avs")).Bytes()
 		sig := o.blsKeypair.Sign(msgBytes)
@@ -220,7 +222,7 @@ func (o *Operator) Start(ctx context.Context) error {
 
 	// check operator delegation usd amount
 
-	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), o.operatorAddr.String())
+	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), operatorAddress)
 	if err != nil {
 		o.logger.Error("Cannot exec IsOperator", "err", err)
 		return err
@@ -228,7 +230,7 @@ func (o *Operator) Start(ctx context.Context) error {
 
 	if amount.IsZero() {
 		o.logger.Error("amount is zero,please delegate amount to the current operator  ", "amount", amount)
-		return err
+		// return err
 	}
 	o.logger.Infof("Starting operator.")
 
@@ -244,20 +246,22 @@ func (o *Operator) Start(ctx context.Context) error {
 	o.GetLog(int64(firstHeight))
 
 	height := firstHeight
-	o.logger.Info("Event firstHeight: %v\n", firstHeight)
+
+	o.logger.Info("Event firstHeight", "firstHeight", firstHeight)
 
 	for {
 		currentHeight, err := o.ethClient.BlockNumber(context.Background())
-		o.logger.Info("Event currentHeight: %v\n", currentHeight)
-
 		if err != nil {
 			o.logger.Fatal(err.Error())
 		}
-		if currentHeight == height+1 {
-			o.GetLog(int64(currentHeight))
+		o.logger.Info("Event currentHeight", "height", height, "currentHeight", currentHeight)
 
-			height = currentHeight
+		if currentHeight == height+1 {
+			o.logger.Info("Block height increases, processing logs", "processHeight", currentHeight)
+
+			o.GetLog(int64(currentHeight))
 		}
+		height = currentHeight
 		time.Sleep(2 * time.Second) // Wait for 2 seconds and check again
 
 	}
@@ -274,7 +278,8 @@ func (o *Operator) GetLog(height int64) {
 	if err != nil {
 		o.logger.Fatal(err.Error())
 	}
-	if logs != nil {
+	if logs != nil && len(logs) != 0 {
+		o.logger.Info("finding new logs", "logs", logs)
 		contractAbi, _ := avs.ContracthelloWorldMetaData.GetAbi()
 		event := contractAbi.Events["TaskCreated"]
 		for _, vLog := range logs {
@@ -290,10 +295,8 @@ func (o *Operator) GetLog(height int64) {
 				if err != nil {
 					continue
 				}
-				o.logger.Info(string(sig))
-
-				taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), taskResponse.TaskID.Uint64())
-				go o.SendSignedTaskResponseToExocore(context.Background(), taskResponse.TaskID.Uint64(), resBytes, sig, taskInfo)
+				taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), taskResponse.TaskID)
+				go o.SendSignedTaskResponseToExocore(context.Background(), taskResponse.TaskID, resBytes, sig, taskInfo)
 			}
 		}
 	}
@@ -307,29 +310,26 @@ func (o *Operator) ProcessNewTaskCreatedLog(eventArgs []interface{}) *core.TaskR
 		"id", eventArgs[0].(*big.Int),
 		"name", eventArgs[2].(string),
 	)
+	taskId := eventArgs[0].(*big.Int)
 	taskResponse := &core.TaskResponse{
-		TaskID: eventArgs[0].(*big.Int),
-		Msg:    eventArgs[2].(string),
+		TaskID:    taskId.Uint64(),
+		NumberSum: taskId,
 	}
 	return taskResponse
 }
 
 func (o *Operator) SignTaskResponse(taskResponse *core.TaskResponse) ([]byte, []byte, error) {
 
-	taskResponseHash, err := core.GetTaskResponseDigestEncodeByjson(*taskResponse)
+	taskResponseHash, data, err := core.GetTaskResponseDigestEncodeByjson(*taskResponse)
 	if err != nil {
 		o.logger.Error("Error SignTaskResponse with getting task response header hash. skipping task (this is not expected and should be investigated)", "err", err)
 		return nil, nil, err
 	}
 	msgBytes := taskResponseHash[:]
-	o.logger.Info("ResHash:", hex.EncodeToString(msgBytes))
 
 	sig := o.blsKeypair.Sign(msgBytes)
 
-	sigStr := hex.EncodeToString(sig.Marshal())
-	o.logger.Info("sig:", sigStr)
-
-	return sig.Marshal(), msgBytes, nil
+	return sig.Marshal(), data, nil
 }
 
 func (o *Operator) SendSignedTaskResponseToExocore(
@@ -362,45 +362,49 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 			}
 
 			currentEpoch := uint64(num)
-
+			o.logger.Info("current epoch  is :", "currentEpoch", currentEpoch)
 			if currentEpoch > startingEpoch+taskResponsePeriod+taskStatisticalPeriod {
 				o.logger.Info("Exiting loop: Task period has passed")
-				break
+				return "Task period has passed", nil
 			}
 
 			switch {
 			case currentEpoch <= startingEpoch:
-				return "", fmt.Errorf("current epoch %d is less than starting epoch %d", currentEpoch, startingEpoch)
+				o.logger.Info("current epoch  is less than starting epoch", "currentEpoch", currentEpoch, "startingEpoch", startingEpoch)
 
 			case currentEpoch <= startingEpoch+taskResponsePeriod:
-				o.logger.Info("Submitting task response for task response period")
-				tx, err := o.avsWriter.OperatorSubmitTask(
+				o.logger.Info("Execute Phase One Submission Task", "currentEpoch", currentEpoch,
+					"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod)
+				o.logger.Info("Submitting task response for task response period",
+					"taskAddr", o.avsAddr.String(), "taskId", taskId, "operator-addr", o.operatorAddr)
+				_, err := o.avsWriter.OperatorSubmitTask(
 					ctx,
 					taskId,
 					nil,
 					blsSignature,
 					o.avsAddr.String(),
-					"1")
+					1)
 				if err != nil {
 					o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
 					return "", fmt.Errorf("failed to submit task during taskResponsePeriod: %w", err)
 				}
-				return tx.BlockHash.String(), nil
 
-			case currentEpoch <= startingEpoch+taskStatisticalPeriod && currentEpoch > startingEpoch+taskResponsePeriod:
-				o.logger.Info("Submitting task response for statistical period")
-				tx, err := o.avsWriter.OperatorSubmitTask(
+			case currentEpoch <= startingEpoch+taskResponsePeriod+taskStatisticalPeriod && currentEpoch > startingEpoch+taskResponsePeriod:
+				o.logger.Info("Execute Phase Two Submission Task", "currentEpoch", currentEpoch,
+					"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod, "taskStatisticalPeriod", taskStatisticalPeriod)
+				o.logger.Info("Submitting task response for statistical period",
+					"taskAddr", o.avsAddr.String(), "taskId", taskId, "operator-addr", o.operatorAddr)
+				_, err := o.avsWriter.OperatorSubmitTask(
 					ctx,
 					taskId,
 					taskResponse,
 					blsSignature,
 					o.avsAddr.String(),
-					"2")
+					2)
 				if err != nil {
 					o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
 					return "", fmt.Errorf("failed to submit task during statistical period: %w", err)
 				}
-				return tx.BlockHash.String(), nil
 
 			default:
 				o.logger.Info("Current epoch not within expected range", "currentEpoch", currentEpoch)
@@ -434,4 +438,20 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 			}
 		}
 	}
+}
+
+func SwitchEthAddressToExoAddress(ethAddress string) (string, error) {
+	b, err := hex.DecodeString(ethAddress[2:])
+	if err != nil {
+		return "", fmt.Errorf("failed to decode eth address: %w", err)
+	}
+
+	// Generate exo address
+	HRP := "exo"
+	exoAddress, err := bech32.EncodeFromBase256(HRP, b)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode exo address: %w", err)
+	}
+
+	return exoAddress, nil
 }
