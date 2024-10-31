@@ -161,7 +161,7 @@ func (r *ExoChainReader) GetTaskInfo(opts *bind.CallOpts, avsAddress string, tas
 func (r *ExoChainReader) IsOperator(opts *bind.CallOpts, operator string) (bool, error) {
 	flag, err := r.avsManager.IsOperator(
 		opts,
-		operator)
+		gethcommon.HexToAddress(operator))
 	if err != nil {
 		r.logger.Error("Failed to exec IsOperator ", "err", err)
 		return false, err

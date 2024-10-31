@@ -22,6 +22,7 @@ type NodeConfig struct {
 	NodeApiIpPortAddress             string `yaml:"node_api_ip_port_address"`
 	EnableNodeApi                    bool   `yaml:"enable_node_api"`
 	// register avs parameters
+	AvsName            string   `yaml:"avs_name"`
 	MinStakeAmount     uint64   `yaml:"min_stake_amount"`
 	AvsOwnerAddresses  []string `yaml:"avs_owner_addresses"`
 	AssetIds           []string `yaml:"asset_ids"`
@@ -29,6 +30,7 @@ type NodeConfig struct {
 	MinSelfDelegation  uint64   `yaml:"min_self_delegation"`
 	EpochIdentifier    string   `yaml:"epoch_identifier"`
 	Params             []uint64 `yaml:"params"`
+	TaskAddress        string   `yaml:"task_address"`
 	AVSRewardAddress   string   `yaml:"avs_reward_address"`
 	AVSSlashAddress    string   `yaml:"avs_slash_address"`
 }

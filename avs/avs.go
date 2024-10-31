@@ -21,9 +21,10 @@ const (
 )
 
 type Avs struct {
-	logger    logging.Logger
-	avsWriter chain.ExoWriter
-	avsReader chain.ExoReader
+	logger     logging.Logger
+	avsWriter  chain.ExoWriter
+	avsReader  chain.ExoReader
+	avsAddress string
 }
 
 // NewAvs creates a new Avs with the provided config.
@@ -109,9 +110,10 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 	}
 
 	return &Avs{
-		logger:    logger,
-		avsWriter: avsWriter,
-		avsReader: avsReader,
+		logger:     logger,
+		avsWriter:  avsWriter,
+		avsReader:  avsReader,
+		avsAddress: c.AVSAddress,
 	}, nil
 }
 
@@ -143,7 +145,15 @@ func (avs *Avs) Start(ctx context.Context) error {
 // sendNewTask sends a new task to the task manager contract.
 func (avs *Avs) sendNewTask() error {
 	avs.logger.Info("Avs sending new task")
-	_, err := avs.avsWriter.CreateNewTask(
+	taskPowerTotal, err := avs.avsReader.GtAVSUSDValue(&bind.CallOpts{}, avs.avsAddress)
+	if err != nil {
+		avs.logger.Error("Cannot GetAVSInfo", "err", err)
+		panic(err)
+	}
+	if taskPowerTotal.IsZero() || taskPowerTotal.IsNegative() {
+		//panic("the voting power of AVS is zero or negative")
+	}
+	_, err = avs.avsWriter.CreateNewTask(
 		context.Background(),
 		GenerateRandomName(5),
 		types.TaskResponsePeriod,
