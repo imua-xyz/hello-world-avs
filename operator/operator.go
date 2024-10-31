@@ -187,7 +187,7 @@ func (o *Operator) Start(ctx context.Context) error {
 		panic(err)
 	}
 
-	flag, err := o.avsReader.IsOperator(&bind.CallOpts{}, operatorAddress)
+	flag, err := o.avsReader.IsOperator(&bind.CallOpts{}, o.operatorAddr.String())
 	if err != nil {
 		o.logger.Error("Cannot exec IsOperator", "err", err)
 		return err
@@ -246,20 +246,22 @@ func (o *Operator) Start(ctx context.Context) error {
 	o.GetLog(int64(firstHeight))
 
 	height := firstHeight
-	o.logger.Info("Event firstHeight: %v\n", firstHeight)
+
+	o.logger.Info("Event firstHeight", "firstHeight", firstHeight)
 
 	for {
 		currentHeight, err := o.ethClient.BlockNumber(context.Background())
-		o.logger.Info("Event currentHeight: %v\n", currentHeight)
-
 		if err != nil {
 			o.logger.Fatal(err.Error())
 		}
-		if currentHeight == height+1 {
-			o.GetLog(int64(currentHeight))
+		o.logger.Info("Event currentHeight", "height", height, "currentHeight", currentHeight)
 
-			height = currentHeight
+		if currentHeight == height+1 {
+			o.logger.Info("Block height increases, processing logs", "processHeight", currentHeight)
+
+			o.GetLog(int64(currentHeight))
 		}
+		height = currentHeight
 		time.Sleep(2 * time.Second) // Wait for 2 seconds and check again
 
 	}
@@ -276,7 +278,8 @@ func (o *Operator) GetLog(height int64) {
 	if err != nil {
 		o.logger.Fatal(err.Error())
 	}
-	if logs != nil {
+	if logs != nil && len(logs) != 0 {
+		o.logger.Info("finding new logs", "logs", logs)
 		contractAbi, _ := avs.ContracthelloWorldMetaData.GetAbi()
 		event := contractAbi.Events["TaskCreated"]
 		for _, vLog := range logs {
@@ -292,10 +295,8 @@ func (o *Operator) GetLog(height int64) {
 				if err != nil {
 					continue
 				}
-				o.logger.Info(string(sig))
-
-				taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), taskResponse.TaskID.Uint64())
-				go o.SendSignedTaskResponseToExocore(context.Background(), taskResponse.TaskID.Uint64(), resBytes, sig, taskInfo)
+				taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), taskResponse.TaskID)
+				go o.SendSignedTaskResponseToExocore(context.Background(), taskResponse.TaskID, resBytes, sig, taskInfo)
 			}
 		}
 	}
@@ -309,29 +310,26 @@ func (o *Operator) ProcessNewTaskCreatedLog(eventArgs []interface{}) *core.TaskR
 		"id", eventArgs[0].(*big.Int),
 		"name", eventArgs[2].(string),
 	)
+	taskId := eventArgs[0].(*big.Int)
 	taskResponse := &core.TaskResponse{
-		TaskID: eventArgs[0].(*big.Int),
-		Msg:    eventArgs[2].(string),
+		TaskID:    taskId.Uint64(),
+		NumberSum: taskId,
 	}
 	return taskResponse
 }
 
 func (o *Operator) SignTaskResponse(taskResponse *core.TaskResponse) ([]byte, []byte, error) {
 
-	taskResponseHash, err := core.GetTaskResponseDigestEncodeByjson(*taskResponse)
+	taskResponseHash, data, err := core.GetTaskResponseDigestEncodeByjson(*taskResponse)
 	if err != nil {
 		o.logger.Error("Error SignTaskResponse with getting task response header hash. skipping task (this is not expected and should be investigated)", "err", err)
 		return nil, nil, err
 	}
 	msgBytes := taskResponseHash[:]
-	o.logger.Info("ResHash:", hex.EncodeToString(msgBytes))
 
 	sig := o.blsKeypair.Sign(msgBytes)
 
-	sigStr := hex.EncodeToString(sig.Marshal())
-	o.logger.Info("sig:", sigStr)
-
-	return sig.Marshal(), msgBytes, nil
+	return sig.Marshal(), data, nil
 }
 
 func (o *Operator) SendSignedTaskResponseToExocore(
@@ -364,45 +362,49 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 			}
 
 			currentEpoch := uint64(num)
-
+			o.logger.Info("current epoch  is :", "currentEpoch", currentEpoch)
 			if currentEpoch > startingEpoch+taskResponsePeriod+taskStatisticalPeriod {
 				o.logger.Info("Exiting loop: Task period has passed")
-				break
+				return "Task period has passed", nil
 			}
 
 			switch {
 			case currentEpoch <= startingEpoch:
-				return "", fmt.Errorf("current epoch %d is less than starting epoch %d", currentEpoch, startingEpoch)
+				o.logger.Info("current epoch  is less than starting epoch", "currentEpoch", currentEpoch, "startingEpoch", startingEpoch)
 
 			case currentEpoch <= startingEpoch+taskResponsePeriod:
-				o.logger.Info("Submitting task response for task response period")
-				tx, err := o.avsWriter.OperatorSubmitTask(
+				o.logger.Info("Execute Phase One Submission Task", "currentEpoch", currentEpoch,
+					"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod)
+				o.logger.Info("Submitting task response for task response period",
+					"taskAddr", o.avsAddr.String(), "taskId", taskId, "operator-addr", o.operatorAddr)
+				_, err := o.avsWriter.OperatorSubmitTask(
 					ctx,
 					taskId,
 					nil,
 					blsSignature,
 					o.avsAddr.String(),
-					0)
+					1)
 				if err != nil {
 					o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
 					return "", fmt.Errorf("failed to submit task during taskResponsePeriod: %w", err)
 				}
-				return tx.BlockHash.String(), nil
 
-			case currentEpoch <= startingEpoch+taskStatisticalPeriod && currentEpoch > startingEpoch+taskResponsePeriod:
-				o.logger.Info("Submitting task response for statistical period")
-				tx, err := o.avsWriter.OperatorSubmitTask(
+			case currentEpoch <= startingEpoch+taskResponsePeriod+taskStatisticalPeriod && currentEpoch > startingEpoch+taskResponsePeriod:
+				o.logger.Info("Execute Phase Two Submission Task", "currentEpoch", currentEpoch,
+					"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod, "taskStatisticalPeriod", taskStatisticalPeriod)
+				o.logger.Info("Submitting task response for statistical period",
+					"taskAddr", o.avsAddr.String(), "taskId", taskId, "operator-addr", o.operatorAddr)
+				_, err := o.avsWriter.OperatorSubmitTask(
 					ctx,
 					taskId,
 					taskResponse,
 					blsSignature,
 					o.avsAddr.String(),
-					1)
+					2)
 				if err != nil {
 					o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
 					return "", fmt.Errorf("failed to submit task during statistical period: %w", err)
 				}
-				return tx.BlockHash.String(), nil
 
 			default:
 				o.logger.Info("Current epoch not within expected range", "currentEpoch", currentEpoch)

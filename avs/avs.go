@@ -21,10 +21,15 @@ const (
 )
 
 type Avs struct {
-	logger     logging.Logger
-	avsWriter  chain.ExoWriter
-	avsReader  chain.ExoReader
-	avsAddress string
+	logger                logging.Logger
+	avsWriter             chain.ExoWriter
+	avsReader             chain.ExoReader
+	avsAddress            string
+	createTaskInterval    int64
+	taskResponsePeriod    uint64
+	taskChallengePeriod   uint64
+	thresholdPercentage   uint64
+	taskStatisticalPeriod uint64
 }
 
 // NewAvs creates a new Avs with the provided config.
@@ -110,16 +115,21 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 	}
 
 	return &Avs{
-		logger:     logger,
-		avsWriter:  avsWriter,
-		avsReader:  avsReader,
-		avsAddress: c.AVSAddress,
+		logger:                logger,
+		avsWriter:             avsWriter,
+		avsReader:             avsReader,
+		avsAddress:            c.AVSAddress,
+		createTaskInterval:    c.CreateTaskInterval,
+		taskResponsePeriod:    c.TaskResponsePeriod,
+		taskChallengePeriod:   c.TaskChallengePeriod,
+		thresholdPercentage:   c.ThresholdPercentage,
+		taskStatisticalPeriod: c.TaskStatisticalPeriod,
 	}, nil
 }
 
 func (avs *Avs) Start(ctx context.Context) error {
 	avs.logger.Infof("Starting avs.")
-	ticker := time.NewTicker(50 * time.Second)
+	ticker := time.NewTicker(time.Duration(avs.createTaskInterval) * time.Second)
 	avs.logger.Infof("Avs owner set to send new task every 50 seconds...")
 	defer ticker.Stop()
 	taskNum := int64(1)
@@ -156,10 +166,10 @@ func (avs *Avs) sendNewTask() error {
 	_, err = avs.avsWriter.CreateNewTask(
 		context.Background(),
 		GenerateRandomName(5),
-		types.TaskResponsePeriod,
-		types.TaskChallengePeriod,
-		types.ThresholdPercentage,
-		types.TaskStatisticalPeriod)
+		avs.taskResponsePeriod,
+		avs.taskChallengePeriod,
+		avs.thresholdPercentage,
+		avs.taskStatisticalPeriod)
 
 	if err != nil {
 		avs.logger.Error("Avs failed to sendNewTask", "err", err)

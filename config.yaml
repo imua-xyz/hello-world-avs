@@ -5,7 +5,8 @@ operator_address: 0xce5b680d1fd259ada4820e9314bcf0723bdb1287
 #The eoa address of avs owner, used for sending transactions
 avs_owner_address: 0x3e108c058e8066DA635321Dc3018294cA82ddEdf
 #Address of deployed AVS contract
-avs_address: 0xaD6864A88b832100750Ff35881851c943e5BAc34
+avs_address: 0x4f5CDaE0B1afeB0473dEb5AC4F9912409BBBBb72
+
 
 # ETH RPC URL
 eth_rpc_url: http://127.0.0.1:8545
@@ -27,12 +28,20 @@ asset_ids:
   - "0xdac17f958d2ee523a2206206994597c13d831ec7_0x65"
 avs_unbonding_period: 7
 min_self_delegation: 0
-epoch_identifier: hour
-avs_reward_address: 0xC27e40CDC58Cb5c85e97bCf8ae97e5a109667959
-avs_slash_address:  0xC27e40CDC58Cb5c85e97bCf8ae97e5a109667959
-task_address:  0xC27e40CDC58Cb5c85e97bCf8ae97e5a109667959
+epoch_identifier: minute
+avs_reward_address: 0x4f5CDaE0B1afeB0473dEb5AC4F9912409BBBBb72
+avs_slash_address:  0x4f5CDaE0B1afeB0473dEb5AC4F9912409BBBBb72
+task_address:  0x4f5CDaE0B1afeB0473dEb5AC4F9912409BBBBb72
 params:
   - 5
   - 7
   - 8
   - 4
+
+#create new task parameters
+#Create task intervals,Unit second
+create_task_interval: 500
+task_response_period: 2
+task_challenge_period: 2
+threshold_percentage: 100
+task_statistical_period: 2

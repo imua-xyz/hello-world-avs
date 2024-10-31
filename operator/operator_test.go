@@ -20,7 +20,7 @@ func TestEth_getlogs(t *testing.T) {
 		log.Fatal("Cannot create http ethclient", "err", err)
 	}
 	// 合约地址和 ABI
-	contractAddress := common.HexToAddress("0xDF907c29719154eb9872f021d21CAE6E5025d7aB")
+	contractAddress := common.HexToAddress("0xaD6864A88b832100750Ff35881851c943e5BAc34")
 	if err != nil {
 		log.Fatal(err)
 	}

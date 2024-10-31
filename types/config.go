@@ -1,12 +1,5 @@
 package types
 
-const (
-	TaskResponsePeriod    = uint64(3)
-	TaskChallengePeriod   = uint64(3)
-	ThresholdPercentage   = uint64(100)
-	TaskStatisticalPeriod = uint64(3)
-)
-
 type NodeConfig struct {
 	// used to set the logger level (true = info, false = debug)
 	Production                       bool   `yaml:"production"`
@@ -21,6 +14,7 @@ type NodeConfig struct {
 	RegisterOperatorOnStartup        bool   `yaml:"register_operator_on_startup"`
 	NodeApiIpPortAddress             string `yaml:"node_api_ip_port_address"`
 	EnableNodeApi                    bool   `yaml:"enable_node_api"`
+
 	// register avs parameters
 	AvsName            string   `yaml:"avs_name"`
 	MinStakeAmount     uint64   `yaml:"min_stake_amount"`
@@ -33,4 +27,11 @@ type NodeConfig struct {
 	TaskAddress        string   `yaml:"task_address"`
 	AVSRewardAddress   string   `yaml:"avs_reward_address"`
 	AVSSlashAddress    string   `yaml:"avs_slash_address"`
+
+	// create new task parameters
+	CreateTaskInterval    int64  `yaml:"create_task_interval"`
+	TaskResponsePeriod    uint64 `yaml:"task_response_period"`
+	TaskChallengePeriod   uint64 `yaml:"task_challenge_period"`
+	ThresholdPercentage   uint64 `yaml:"threshold_percentage"`
+	TaskStatisticalPeriod uint64 `yaml:"task_statistical_period"`
 }

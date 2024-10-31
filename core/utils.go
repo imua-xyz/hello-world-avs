@@ -7,8 +7,8 @@ import (
 )
 
 type TaskResponse struct {
-	TaskID *big.Int
-	Msg    string
+	TaskID    uint64
+	NumberSum *big.Int
 }
 
 // GetTaskResponseDigestEncodeByjson returns the hash of the TaskResponse, which is what operators sign over
@@ -25,11 +25,11 @@ func UnmarshalTaskResponse(jsonData []byte) (TaskResponse, error) {
 }
 
 // GetTaskResponseDigestEncodeByjson returns the hash of the TaskResponse, which is what operators sign over.
-func GetTaskResponseDigestEncodeByjson(h TaskResponse) ([32]byte, error) {
+func GetTaskResponseDigestEncodeByjson(h TaskResponse) ([32]byte, []byte, error) {
 	jsonData, err := MarshalTaskResponse(h)
 	if err != nil {
-		return [32]byte{}, err
+		return [32]byte{}, []byte{}, err
 	}
 	taskResponseDigest := crypto.Keccak256Hash(jsonData)
-	return taskResponseDigest, nil
+	return taskResponseDigest, jsonData, nil
 }
