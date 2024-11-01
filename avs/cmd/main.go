@@ -22,7 +22,6 @@ var (
 )
 
 func main() {
-
 	app := cli.NewApp()
 	app.Flags = []cli.Flag{config.FileFlag}
 	app.Version = fmt.Sprintf("%s-%s-%s", Version, GitCommit, GitDate)
@@ -38,7 +37,6 @@ func main() {
 }
 
 func avsMain(ctx *cli.Context) error {
-
 	configPath := ctx.GlobalString(config.FileFlag.Name)
 	nodeConfig := types.NodeConfig{}
 	err := sdkutils.ReadYamlConfig(configPath, &nodeConfig)
@@ -64,5 +62,4 @@ func avsMain(ctx *cli.Context) error {
 	}
 
 	return nil
-
 }

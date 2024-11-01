@@ -12,17 +12,15 @@ import (
 	"github.com/ExocoreNetwork/exocore-sdk/chainio/txmgr"
 	"github.com/ExocoreNetwork/exocore-sdk/crypto/bls"
 	sdklogging "github.com/ExocoreNetwork/exocore-sdk/logging"
+	"github.com/ExocoreNetwork/exocore-sdk/nodeapi"
+	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
 	"github.com/cosmos/btcutil/bech32"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	blscommon "github.com/prysmaticlabs/prysm/v4/crypto/bls/common"
 	"math/big"
-	"time"
-
-	"github.com/ExocoreNetwork/exocore-sdk/nodeapi"
-	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
-	"github.com/ethereum/go-ethereum/common"
 	"os"
 )
 
@@ -171,15 +169,14 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	)
 
 	return operator, nil
-
 }
 
 func (o *Operator) Start(ctx context.Context) error {
-	// 1.operator register  exocore
-	// 2.operator optin avs
+	// 1.operator register exocore
+	// 2.operator opt-in avs
 	// 3.operator accept staker delegation so that avs voting power is not 0, otherwise the task cannot be created
 	// 4.operator register BLSPublicKey
-	// 5.operator sumit task parse
+	// 5.operator submit task
 
 	operatorAddress, err := SwitchEthAddressToExoAddress(o.operatorAddr.String())
 	if err != nil {
@@ -221,8 +218,7 @@ func (o *Operator) Start(ctx context.Context) error {
 	}
 
 	// check operator delegation usd amount
-
-	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), operatorAddress)
+	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), o.operatorAddr.String())
 	if err != nil {
 		o.logger.Error("Cannot exec IsOperator", "err", err)
 		return err
@@ -246,28 +242,49 @@ func (o *Operator) Start(ctx context.Context) error {
 	o.GetLog(int64(firstHeight))
 
 	height := firstHeight
+	o.logger.Info("Event firstHeight: %v\n", firstHeight)
+	// Channel to receive new block heights
+	blockCh := make(chan uint64)
 
-	o.logger.Info("Event firstHeight", "firstHeight", firstHeight)
-
+	// Start a goroutine to monitor block heights
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				o.logger.Info("Stopping block monitoring")
+				close(blockCh)
+				return
+			default:
+				currentHeight, err := o.ethClient.BlockNumber(ctx)
+				if err != nil {
+					o.logger.Error("Error getting block number", "err", err)
+					continue
+				}
+				if currentHeight == height+1 {
+					blockCh <- currentHeight
+					height = currentHeight
+				}
+			}
+		}
+	}()
+	// Process new block heights as they are received
 	for {
-		currentHeight, err := o.ethClient.BlockNumber(context.Background())
-		if err != nil {
-			o.logger.Fatal(err.Error())
+		select {
+		case <-ctx.Done():
+			o.logger.Info("Context cancelled, exiting loop")
+			return nil
+		case newHeight, ok := <-blockCh:
+			if !ok {
+				o.logger.Info("Block channel closed, exiting loop")
+				return nil
+			}
+			if err := o.GetLog(int64(newHeight)); err != nil {
+				o.logger.Error("Error retrieving logs for block %d: %v", newHeight, err)
+			}
 		}
-		o.logger.Info("Event currentHeight", "height", height, "currentHeight", currentHeight)
-
-		if currentHeight == height+1 {
-			o.logger.Info("Block height increases, processing logs", "processHeight", currentHeight)
-
-			o.GetLog(int64(currentHeight))
-		}
-		height = currentHeight
-		time.Sleep(2 * time.Second) // Wait for 2 seconds and check again
-
 	}
-
 }
-func (o *Operator) GetLog(height int64) {
+func (o *Operator) GetLog(height int64) error {
 	query := ethereum.FilterQuery{
 		Addresses: []common.Address{o.avsAddr},
 		FromBlock: big.NewInt(height),
@@ -276,10 +293,10 @@ func (o *Operator) GetLog(height int64) {
 
 	logs, err := o.ethClient.FilterLogs(context.Background(), query)
 	if err != nil {
-		o.logger.Fatal(err.Error())
+		o.logger.Error("Failed to filter logs", "err", err)
+		return err
 	}
-	if logs != nil && len(logs) != 0 {
-		o.logger.Info("finding new logs", "logs", logs)
+	if logs != nil {
 		contractAbi, _ := avs.ContracthelloWorldMetaData.GetAbi()
 		event := contractAbi.Events["TaskCreated"]
 		for _, vLog := range logs {
@@ -287,12 +304,14 @@ func (o *Operator) GetLog(height int64) {
 
 			eventArgs, err := event.Inputs.Unpack(data)
 			if err != nil {
-				o.logger.Fatal(err.Error())
+				o.logger.Error("Failed to unpack event inputs", "err", err)
+				return err
 			}
 			if eventArgs != nil {
 				taskResponse := o.ProcessNewTaskCreatedLog(eventArgs)
 				sig, resBytes, err := o.SignTaskResponse(taskResponse)
 				if err != nil {
+					o.logger.Error("Failed to sign task response", "err", err)
 					continue
 				}
 				taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), taskResponse.TaskID)
@@ -300,7 +319,7 @@ func (o *Operator) GetLog(height int64) {
 			}
 		}
 	}
-
+	return nil
 }
 
 // ProcessNewTaskCreatedLog TaskResponse is the struct that is signed and sent to the exocore as a task response.
@@ -407,35 +426,35 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 				}
 
 			default:
-				o.logger.Info("Current epoch not within expected range", "currentEpoch", currentEpoch)
+				o.logger.Info("Current epoch is not within expected range", "currentEpoch", currentEpoch)
+				return "", fmt.Errorf("current epoch %d is not within expected range %d", currentEpoch, startingEpoch)
 			}
+			// Disable the uselesss ticker.
+			// // Dynamic sleep based on the epoch identifier
+			// var sleepDuration time.Duration
+			// switch epochIdentifier {
+			// case DayEpochID:
+			// 	sleepDuration = 24 * time.Hour
+			// case HourEpochID:
+			// 	sleepDuration = time.Hour
+			// case MinuteEpochID:
+			// 	sleepDuration = time.Minute
+			// case WeekEpochID:
+			// 	sleepDuration = 7 * 24 * time.Hour
+			// default:
+			// 	o.logger.Warn("Unknown epoch identifier", "epochIdentifier", epochIdentifier)
+			// 	sleepDuration = time.Minute // Default to a safe short duration
+			// }
 
-			// Dynamic sleep based on the epoch identifier
-			var sleepDuration time.Duration
-			switch epochIdentifier {
-			case DayEpochID:
-				sleepDuration = 24 * time.Hour
-			case HourEpochID:
-				sleepDuration = time.Hour
-			case MinuteEpochID:
-				sleepDuration = time.Minute
-			case WeekEpochID:
-				sleepDuration = 7 * 24 * time.Hour
-			default:
-				o.logger.Warn("Unknown epoch identifier", "epochIdentifier", epochIdentifier)
-				sleepDuration = time.Minute // Default to a safe short duration
-			}
-
-			// Use a ticker instead of time.Sleep for more control and graceful handling
-			ticker := time.NewTicker(sleepDuration)
-			select {
-			case <-ticker.C:
-				// Sleep completed, continue loop
-				ticker.Stop()
-			case <-ctx.Done():
-				ticker.Stop()
-				return "", ctx.Err() // Handle cancellation
-			}
+			// // Use a ticker instead of time.Sleep for more control and graceful handling
+			// ticker := time.NewTicker(sleepDuration)
+			// defer ticker.Stop() // Ensure ticker stops even if the function exits early
+			// select {
+			// case <-ticker.C:
+			// 	continue // Proceed to the next iteration
+			// case <-ctx.Done():
+			// 	return "", ctx.Err() // Handle cancellation
+			// }
 		}
 	}
 }

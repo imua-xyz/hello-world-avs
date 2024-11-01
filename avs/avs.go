@@ -33,7 +33,6 @@ type Avs struct {
 }
 
 // NewAvs creates a new Avs with the provided config.
-
 func NewAvs(c *types.NodeConfig) (*Avs, error) {
 	var logLevel sdklogging.LogLevel
 	if c.Production {
@@ -134,20 +133,26 @@ func (avs *Avs) Start(ctx context.Context) error {
 	defer ticker.Stop()
 	taskNum := int64(1)
 	// send the first task
-	_ = avs.sendNewTask()
+	err := avs.sendNewTask()
+	if err != nil {
+		// we log the errors inside sendNewTask() so here we just continue to do the next task
+		avs.logger.Warnf("sendNewTask encountered an error: %v; continuing to do the next task.", err)
+	}
 	taskNum++
 	for {
 		select {
 		case <-ctx.Done():
+			avs.logger.Info("Context canceled; stopping AVS.")
 			return nil
 		case <-ticker.C:
 			avs.logger.Info("sendNewTask-num:", taskNum)
 			err := avs.sendNewTask()
-			taskNum++
 			if err != nil {
-				// we log the errors inside sendNewTask() so here we just continue to the next task
+				// we log the errors inside sendNewTask() so here we just continue to do the next task
+				avs.logger.Warnf("sendNewTask encountered an error: %v; continuing to do the next task.", err)
 				continue
 			}
+			taskNum++
 		}
 	}
 }
@@ -175,7 +180,6 @@ func (avs *Avs) sendNewTask() error {
 		avs.logger.Error("Avs failed to sendNewTask", "err", err)
 		return err
 	}
-
 	return nil
 }
 func GenerateRandomName(length int) string {

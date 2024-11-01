@@ -30,7 +30,6 @@ func main() {
 }
 
 func operatorMain(ctx *cli.Context) error {
-
 	log.Println("Initializing Operator")
 	configPath := ctx.GlobalString(config.FileFlag.Name)
 	nodeConfig := types.NodeConfig{}
@@ -59,5 +58,4 @@ func operatorMain(ctx *cli.Context) error {
 	log.Println("started operator")
 
 	return nil
-
 }
