@@ -274,6 +274,7 @@ func (o *Operator) Start(ctx context.Context) error {
 			o.logger.Info("Context cancelled, exiting loop")
 			return nil
 		case newHeight, ok := <-blockCh:
+			// o.logger.Info("newHeight", newHeight)
 			if !ok {
 				o.logger.Info("Block channel closed, exiting loop")
 				return nil

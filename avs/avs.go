@@ -2,10 +2,13 @@ package avs
 
 import (
 	"context"
+	sdkmath "cosmossdk.io/math"
+	"github.com/ExocoreNetwork/exocore-avs/core"
 	chain "github.com/ExocoreNetwork/exocore-avs/core/chainio"
 	"github.com/ExocoreNetwork/exocore-avs/core/chainio/eth"
 	"github.com/ExocoreNetwork/exocore-avs/types"
 	"github.com/ExocoreNetwork/exocore-sdk/chainio/txmgr"
+	sdkEcdsa "github.com/ExocoreNetwork/exocore-sdk/crypto/ecdsa"
 	"github.com/ExocoreNetwork/exocore-sdk/logging"
 	sdklogging "github.com/ExocoreNetwork/exocore-sdk/logging"
 	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
@@ -17,7 +20,9 @@ import (
 )
 
 const (
-	avsName = "hello-avs-demo"
+	avsName    = "hello-avs-demo"
+	maxRetries = 10
+	retryDelay = 5 * time.Second
 )
 
 type Avs struct {
@@ -69,6 +74,40 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		panic(err)
 	}
 
+	if c.AVSAddress == "" {
+		logger.Info("AVS_ADDRESS env var not set. will deploy avs contract")
+
+		key, err := sdkEcdsa.ReadKey(c.AVSEcdsaPrivateKeyStorePath, ecdsaKeyPassword)
+
+		avsAddr, _, err := chain.DeployAVS(
+			ethRpcClient,
+			logger,
+			*key,
+			chainId,
+		)
+		if err != nil {
+			panic(err)
+		}
+
+		c.AVSAddress = avsAddr.String()
+		c.TaskAddress = avsAddr.String()
+		c.AVSRewardAddress = avsAddr.String()
+		c.AVSSlashAddress = avsAddr.String()
+		filePath, err := core.GetFileInCurrentDirectory("config.yaml")
+		if err != nil {
+			panic(err)
+		}
+		err = core.UpdateYAMLWithComments(filePath, "avs_address", avsAddr.String())
+		err = core.UpdateYAMLWithComments(filePath, "avs_reward_address", avsAddr.String())
+		err = core.UpdateYAMLWithComments(filePath, "avs_slash_address", avsAddr.String())
+		err = core.UpdateYAMLWithComments(filePath, "task_address", avsAddr.String())
+
+		if err != nil {
+			logger.Error("AVS_ADDRESS env var not set. will deploy avs contract")
+
+		}
+	}
+
 	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, common.HexToAddress(c.AVSOwnerAddress))
 	avsWriter, err := chain.BuildExoChainWriter(
 		common.HexToAddress(c.AVSAddress),
@@ -88,6 +127,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		logger.Error("Cannot create exoChainReader", "err", err)
 		return nil, err
 	}
+	time.Sleep(retryDelay)
 	info, err := avsReader.GetAVSEpochIdentifier(&bind.CallOpts{}, c.AVSAddress)
 	if err != nil {
 		logger.Error("Cannot GetAVSEpochIdentifier", "err", err)
@@ -97,7 +137,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		_, err = avsWriter.RegisterAVSToExocore(context.Background(),
 			avsName,
 			c.MinStakeAmount,
-			common.HexToAddress(c.AVSAddress),
+			common.HexToAddress(c.TaskAddress),
 			common.HexToAddress(c.AVSRewardAddress),
 			common.HexToAddress(c.AVSSlashAddress),
 			c.AvsOwnerAddresses,
@@ -160,15 +200,39 @@ func (avs *Avs) Start(ctx context.Context) error {
 // sendNewTask sends a new task to the task manager contract.
 func (avs *Avs) sendNewTask() error {
 	avs.logger.Info("Avs sending new task")
-	taskPowerTotal, err := avs.avsReader.GtAVSUSDValue(&bind.CallOpts{}, avs.avsAddress)
-	if err != nil {
-		avs.logger.Error("Cannot GetAVSEpochIdentifier", "err", err)
-		panic(err)
+	var taskPowerTotal sdkmath.LegacyDec
+	var lastErr error
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		taskPowerTotal, lastErr = avs.avsReader.GtAVSUSDValue(&bind.CallOpts{}, avs.avsAddress)
+
+		if lastErr == nil && !taskPowerTotal.IsZero() && !taskPowerTotal.IsNegative() {
+			break
+		}
+
+		if lastErr != nil {
+			avs.logger.Error("Cannot get AVSUSDValue",
+				"err", lastErr,
+				"attempt", attempt,
+				"max_attempts", maxRetries)
+		} else {
+			avs.logger.Warn("AVS USD value is zero or negative",
+				"value", taskPowerTotal,
+				"attempt", attempt,
+				"max_attempts", maxRetries)
+		}
+
+		if attempt == maxRetries {
+			// panic("the voting power of AVS is zero or negative")
+		}
+
+		time.Sleep(retryDelay)
 	}
+
 	if taskPowerTotal.IsZero() || taskPowerTotal.IsNegative() {
-		//panic("the voting power of AVS is zero or negative")
+		// panic("the voting power of AVS is zero or negative")
 	}
-	_, err = avs.avsWriter.CreateNewTask(
+	_, err := avs.avsWriter.CreateNewTask(
 		context.Background(),
 		GenerateRandomName(5),
 		avs.taskResponsePeriod,
