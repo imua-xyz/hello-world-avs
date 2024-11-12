@@ -56,9 +56,9 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		return nil, err
 	}
 
-	ecdsaKeyPassword, ok := os.LookupEnv("OPERATOR_ECDSA_KEY_PASSWORD")
+	ecdsaKeyPassword, ok := os.LookupEnv("AVS_ECDSA_KEY_PASSWORD")
 	if !ok {
-		logger.Info("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
+		logger.Info("AVS_ECDSA_KEY_PASSWORD env var not set. using empty string")
 	}
 
 	signerV2, _, err := signerv2.SignerFromConfig(signerv2.Config{

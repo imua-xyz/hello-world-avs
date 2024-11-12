@@ -12,16 +12,16 @@ Welcome to the Hello World AVS. This project shows you the simplest functionalit
 
 # Installation
 
-`make install`
+`make build`
 
 Or check out the latest release.
 
 # Quick Start
 
-1.`avs --config config.yaml`
-2.`operator --config config.yaml`
-3.`operator --config config.yaml`
-4.`exokey import --key-type ecdsa {pri_key}`
+1.`avs --config config.yaml`  
+2.`operator --config config.yaml`  
+3.`operator --config config.yaml`  
+4.`exokey import --key-type ecdsa {pri_key}`  
 
 
 ### eg.
@@ -107,11 +107,18 @@ This document provides a comprehensive guide to generating and managing private 
 # Output: tests/keys/operator.ecdsa.key.json
 ```
 
-### 3. Import BLS Private Key for operator
+### 3.Generate or Import BLS Private Key for operator
+#### Import
 ```bash
 # Import BLS private key
 ./exokey  importKey --key-type bls --private-key {bls_private_key}  --output-dir /tests/keys/test.bls.key.json
 # Output: tests/keys/test.bls.key.json
+```
+#### Generate
+```bash
+# generate BLS key
+./exokey  generate --key-type bls --num-keys 1
+# Output: random folder
 ```
 
 ## Key Management Best Practices
@@ -125,4 +132,37 @@ This document provides a comprehensive guide to generating and managing private 
 # Verify key files exist
 ls tests/keys/
 ```
- 
+## Note 🚨
+**Important Password Configuration**
+
+If a non-empty password is used when writing private keys to JSON files, you must set the corresponding environment variables:
+
+| Key Type | Environment Variable | JSON File Path |
+|----------|---------------------|----------------|
+| BLS Key | `OPERATOR_BLS_KEY_PASSWORD` | `tests/keys/test.bls.key.json` |
+| Operator ECDSA Key | `OPERATOR_ECDSA_KEY_PASSWORD` | `tests/keys/operator.ecdsa.key.json` |
+| AVS ECDSA Key | `AVS_ECDSA_KEY_PASSWORD` | `tests/keys/avs.ecdsa.key.json` |
+
+## Secure Environment Variable Management
+
+### 1. Temporary Terminal Session
+```bash
+# Set individual key passwords
+export OPERATOR_BLS_KEY_PASSWORD="strong_bls_password"
+export OPERATOR_ECDSA_KEY_PASSWORD="strong_ecdsa_password"
+export AVS_ECDSA_KEY_PASSWORD="strong_avs_password"
+```
+
+### 2. Persistent Zsh Configuration
+```bash
+# Edit ~/.zshrc configuration
+nano ~/.zshrc
+
+# Add secure passwords
+export OPERATOR_BLS_KEY_PASSWORD="strong_bls_password"
+export OPERATOR_ECDSA_KEY_PASSWORD="strong_ecdsa_password"
+export AVS_ECDSA_KEY_PASSWORD="strong_avs_password"
+
+# Reload configuration
+source ~/.zshrc
+```

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/ExocoreNetwork/exocore-avs/cmd/exokey/generate"
 	"os"
 
 	"github.com/ExocoreNetwork/exocore-avs/cmd/exokey/import"
@@ -14,6 +15,7 @@ func main() {
 	app.Description = "Exocore key manager"
 	app.Commands = []*cli.Command{
 		_import.Command,
+		generate.Command,
 	}
 
 	app.Usage = "Import keys for testing purpose"
