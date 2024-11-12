@@ -29,7 +29,7 @@ type ExoReader interface {
 		avsAddress string,
 		operatorAddr string,
 	) (sdkmath.LegacyDec, error)
-	GetAVSInfo(
+	GetAVSEpochIdentifier(
 		opts *bind.CallOpts,
 		avsAddress string,
 	) (string, error)
@@ -137,12 +137,12 @@ func (r *ExoChainReader) GetOperatorOptedUSDValue(opts *bind.CallOpts, avsAddres
 	return sdkmath.LegacyNewDecFromBigInt(amount), nil
 }
 
-func (r *ExoChainReader) GetAVSInfo(opts *bind.CallOpts, avsAddress string) (string, error) {
-	epochIdentifier, err := r.avsManager.GetAVSInfo(
+func (r *ExoChainReader) GetAVSEpochIdentifier(opts *bind.CallOpts, avsAddress string) (string, error) {
+	epochIdentifier, err := r.avsManager.GetAVSEpochIdentifier(
 		opts,
 		gethcommon.HexToAddress(avsAddress))
 	if err != nil {
-		r.logger.Error("Failed to GetAVSInfo ", "err", err)
+		r.logger.Error("Failed to GetAVSEpochIdentifier ", "err", err)
 		return "", err
 	}
 	return epochIdentifier, nil

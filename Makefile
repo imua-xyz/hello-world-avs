@@ -32,7 +32,7 @@ operator:
 
 # ExoKey build
 exokey:
-	$(GOBUILD) $(LDFLAGS) -o $(EXOKEY_BINARY) exokey/cmd/main.go
+	 GO_VERSION=$(GO_VERSION) $(GOBUILD) $(LDFLAGS) -o $(EXOKEY_BINARY) cmd/exokey/main.go
 
 # Clean build artifacts
 clean:

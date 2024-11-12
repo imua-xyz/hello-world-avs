@@ -220,7 +220,7 @@ contract AvsServiceContract {
         return amount;
     }
 
-    function getAVSInfo(address avsAddr) external view returns (string memory){
+    function getAVSEpochIdentifier(address avsAddr) external view returns (string memory){
         string memory epochIdentifier = avs.AVSMANAGER_CONTRACT.getAVSEpochIdentifier(
             avsAddr
         );

@@ -88,34 +88,29 @@ This document provides a comprehensive guide to generating and managing private 
 - BLS Private Key: `tests/keys/test.bls.key.json`
 
 ## Prerequisites
-- Ensure `exokey` is installed
+- Ensure `exokey` is installed(use "make exokey" command)
 - Have private keys ready for import
 
-## Generation Steps
+##  Steps
 
-### 1. Create Keys Directory
-```bash
-mkdir -p tests/keys
-```
-
-### 2. Generate AVS ECDSA Private Key
+### 1. Import AVS ECDSA Private Key
 ```bash
 # Import AVS private key
-./exokey import --key-type ecdsa {avs_private_key}
+./exokey importKey --key-type ecdsa --private-key {avs_private_key}  --output-dir /tests/keys/avs.ecdsa.key.json
 # Output: tests/keys/avs.ecdsa.key.json
 ```
 
-### 3. Generate Operator ECDSA Private Key
+### 2. Import Operator ECDSA Private Key
 ```bash
 # Import Operator private key
-./exokey import --key-type ecdsa {operator_private_key}
+./exokey importKey --key-type ecdsa --private-key {operator_private_key} --output-dir /tests/keys/operator.ecdsa.key.json
 # Output: tests/keys/operator.ecdsa.key.json
 ```
 
-### 4. Generate BLS Private Key
+### 3. Import BLS Private Key for operator
 ```bash
 # Import BLS private key
-./exokey import --key-type bls {bls_private_key}
+./exokey  importKey --key-type bls --private-key {bls_private_key}  --output-dir /tests/keys/test.bls.key.json
 # Output: tests/keys/test.bls.key.json
 ```
 
@@ -130,9 +125,4 @@ mkdir -p tests/keys
 # Verify key files exist
 ls tests/keys/
 ```
-
-## Troubleshooting
-- Ensure correct key format
-- Check `exokey` version compatibility
-- Verify key type matching
-
+ 

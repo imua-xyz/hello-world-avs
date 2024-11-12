@@ -9,8 +9,10 @@ require (
 	github.com/ExocoreNetwork/exocore-sdk v0.0.0-20241015084105-82ca86d66a08
 	github.com/cosmos/btcutil v1.0.5
 	github.com/ethereum/go-ethereum v1.13.8
+	github.com/google/uuid v1.6.0
 	github.com/prysmaticlabs/prysm/v4 v4.2.1
 	github.com/urfave/cli v1.22.14
+	github.com/urfave/cli/v2 v2.25.7
 )
 
 require (
@@ -29,7 +31,6 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/holiman/uint256 v1.2.4 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
@@ -52,6 +53,7 @@ require (
 	github.com/thomaso-mirodin/intmath v0.0.0-20160323211736-5dc6d854e46e // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
+	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect

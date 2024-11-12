@@ -135,9 +135,9 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		logger.Error("Cannot create AvsSubscriber", "err", err)
 		return nil, err
 	}
-	epochIdentifier, err := avsReader.GetAVSInfo(&bind.CallOpts{}, c.AVSAddress)
+	epochIdentifier, err := avsReader.GetAVSEpochIdentifier(&bind.CallOpts{}, c.AVSAddress)
 	if err != nil {
-		logger.Error("Cannot GetAVSInfo", "err", err)
+		logger.Error("Cannot GetAVSEpochIdentifier", "err", err)
 		return nil, err
 	}
 	operator := &Operator{
@@ -368,9 +368,9 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 			return "", ctx.Err() // Gracefully exit if context is canceled
 		default:
 			// Fetch the current epoch information
-			epochIdentifier, err := o.avsReader.GetAVSInfo(&bind.CallOpts{}, o.avsAddr.String())
+			epochIdentifier, err := o.avsReader.GetAVSEpochIdentifier(&bind.CallOpts{}, o.avsAddr.String())
 			if err != nil {
-				o.logger.Error("Cannot GetAVSInfo", "err", err)
+				o.logger.Error("Cannot GetAVSEpochIdentifier", "err", err)
 				return "", fmt.Errorf("failed to get AVS info: %w", err) // Stop on persistent error
 			}
 

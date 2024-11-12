@@ -88,9 +88,9 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		logger.Error("Cannot create exoChainReader", "err", err)
 		return nil, err
 	}
-	info, err := avsReader.GetAVSInfo(&bind.CallOpts{}, c.AVSAddress)
+	info, err := avsReader.GetAVSEpochIdentifier(&bind.CallOpts{}, c.AVSAddress)
 	if err != nil {
-		logger.Error("Cannot GetAVSInfo", "err", err)
+		logger.Error("Cannot GetAVSEpochIdentifier", "err", err)
 		return nil, err
 	}
 	if info == "" {
@@ -162,7 +162,7 @@ func (avs *Avs) sendNewTask() error {
 	avs.logger.Info("Avs sending new task")
 	taskPowerTotal, err := avs.avsReader.GtAVSUSDValue(&bind.CallOpts{}, avs.avsAddress)
 	if err != nil {
-		avs.logger.Error("Cannot GetAVSInfo", "err", err)
+		avs.logger.Error("Cannot GetAVSEpochIdentifier", "err", err)
 		panic(err)
 	}
 	if taskPowerTotal.IsZero() || taskPowerTotal.IsNegative() {
