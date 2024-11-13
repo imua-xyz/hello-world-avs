@@ -1,11 +1,11 @@
 # this sets the logger level (true = info, false = debug)
 production: false
 #The eoa address of Operato, used for sending transactions
-operator_address: 0xce5b680d1fd259ada4820e9314bcf0723bdb1287
+operator_address: 0xAF08336BC6A8D169c34A4e9e4d6276e362F4757E
 #The eoa address of avs owner, used for sending transactions
 avs_owner_address: 0x3e108c058e8066DA635321Dc3018294cA82ddEdf
 #Address of deployed AVS contract
-avs_address:
+avs_address: 
 # ETH RPC URL
 eth_rpc_url: http://127.0.0.1:8545
 eth_ws_url: ws://127.0.0.1:8546
@@ -20,15 +20,15 @@ avs_name: "hello-avs"
 min_stake_amount: 1
 avs_owner_addresses:
   - "exo18cggcpvwspnd5c6ny8wrqxpffj5zmhklprtnph"
-  - "exo1sc9kjykz6qehauzmhjympsktdjaw4d99dksgrk"
+  - "exo14uyrx67x4rgkns62f60y6cnkud30gat7a20fdx"
 asset_ids:
   - "0xdac17f958d2ee523a2206206994597c13d831ec7_0x65"
 avs_unbonding_period: 7
 min_self_delegation: 0
 epoch_identifier: minute
-avs_reward_address:
-avs_slash_address:
-task_address:
+avs_reward_address: 
+avs_slash_address: 
+task_address: 
 params:
   - 5
   - 7
@@ -41,3 +41,7 @@ task_response_period: 2
 task_challenge_period: 2
 threshold_percentage: 100
 task_statistical_period: 2
+# depoist and delegate params
+deposit_amount: 100
+delegate_amount: 100
+staker: 0xa53f68563D22EB0dAFAA871b6C08a6852f91d627

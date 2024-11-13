@@ -220,13 +220,27 @@ func (o *Operator) Start(ctx context.Context) error {
 	// check operator delegation usd amount
 	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), operatorAddress)
 	if err != nil {
-		o.logger.Error("Cannot exec IsOperator", "err", err)
+		o.logger.Error("Cannot exec GetOperatorOptedUSDValue", "err", err)
 		return err
 	}
 
 	if amount.IsZero() {
-		o.logger.Error("amount is zero,please delegate amount to the current operator  ", "amount", amount)
-		// return err
+		//depoist and delegate
+		err := o.Deposit()
+		if err != nil {
+			o.logger.Error("Cannot Deposit", "err", err)
+			return err
+		}
+		err = o.Delegate()
+		if err != nil {
+			o.logger.Error("Cannot Delegate", "err", err)
+			return err
+		}
+		err = o.SelfDelegate()
+		if err != nil {
+			o.logger.Error("Cannot SelfDelegate", "err", err)
+			return err
+		}
 	}
 	o.logger.Infof("Starting operator.")
 

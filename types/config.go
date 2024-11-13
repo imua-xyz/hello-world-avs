@@ -34,4 +34,9 @@ type NodeConfig struct {
 	TaskChallengePeriod   uint64 `yaml:"task_challenge_period"`
 	ThresholdPercentage   uint64 `yaml:"threshold_percentage"`
 	TaskStatisticalPeriod uint64 `yaml:"task_statistical_period"`
+
+	// deposit and delegation
+	DepositAmount int64 `yaml:"deposit_amount"`
+	DelegateAmount int64 `yaml:"delegate_amount"`
+	Staker 	   string `yaml:"staker"`
 }
