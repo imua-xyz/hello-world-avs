@@ -169,7 +169,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 func (avs *Avs) Start(ctx context.Context) error {
 	avs.logger.Infof("Starting avs.")
 	ticker := time.NewTicker(time.Duration(avs.createTaskInterval) * time.Second)
-	avs.logger.Infof("Avs owner set to send new task every 50 seconds...")
+	avs.logger.Infof("Avs owner set to send new task every %d seconds", avs.createTaskInterval)
 	defer ticker.Stop()
 	taskNum := int64(1)
 	// send the first task
@@ -185,7 +185,7 @@ func (avs *Avs) Start(ctx context.Context) error {
 			avs.logger.Info("Context canceled; stopping AVS.")
 			return nil
 		case <-ticker.C:
-			avs.logger.Info("sendNewTask-num:", taskNum)
+			avs.logger.Info("sendNewTask-num:", "taskNum", taskNum)
 			err := avs.sendNewTask()
 			if err != nil {
 				// we log the errors inside sendNewTask() so here we just continue to do the next task

@@ -218,7 +218,7 @@ func (o *Operator) Start(ctx context.Context) error {
 	}
 
 	// check operator delegation usd amount
-	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), o.operatorAddr.String())
+	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), operatorAddress)
 	if err != nil {
 		o.logger.Error("Cannot exec IsOperator", "err", err)
 		return err
@@ -242,7 +242,7 @@ func (o *Operator) Start(ctx context.Context) error {
 	o.GetLog(int64(firstHeight))
 
 	height := firstHeight
-	o.logger.Info("Event firstHeight: %v\n", firstHeight)
+	o.logger.Info("Event firstHeight: ", "First detected block height", firstHeight)
 	// Channel to receive new block heights
 	blockCh := make(chan uint64)
 
