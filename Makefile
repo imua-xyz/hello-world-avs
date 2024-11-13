@@ -6,8 +6,8 @@ GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
 
 # Binary names
-AVS_BINARY=avs
-OPERATOR_BINARY=operator
+AVS_BINARY=avsbinary
+OPERATOR_BINARY=operatorbinary
 EXOKEY_BINARY=exokey
 
 # Go version
