@@ -17,22 +17,12 @@ import (
 type ExoWriter interface {
 	RegisterAVSToExocore(
 		ctx context.Context,
-		avsName string,
-		minStakeAmount uint64,
-		taskAddr gethcommon.Address,
-		slashAddr gethcommon.Address,
-		rewardAddr gethcommon.Address,
-		avsOwnerAddress []string,
-		assetIds []string,
-		avsUnbondingPeriod uint64,
-		minSelfDelegation uint64,
-		epochIdentifier string,
-		params []uint64,
+		params avs.AVSParams,
 	) (*gethtypes.Receipt, error)
 
 	RegisterBLSPublicKey(
 		ctx context.Context,
-		name string,
+		avsAddr string,
 		pubKey []byte,
 		pubKeyRegistrationSignature []byte,
 		pubKeyRegistrationMessageHash []byte,
@@ -117,34 +107,15 @@ func BuildExoChainWriter(
 
 func (w *ExoChainWriter) RegisterAVSToExocore(
 	ctx context.Context,
-	avsName string,
-	minStakeAmount uint64,
-	taskAddr gethcommon.Address,
-	slashAddr gethcommon.Address,
-	rewardAddr gethcommon.Address,
-	avsOwnerAddress []string,
-	assetIds []string,
-	avsUnbondingPeriod uint64,
-	minSelfDelegation uint64,
-	epochIdentifier string,
-	params []uint64,
+	params avs.AVSParams,
 ) (*gethtypes.Receipt, error) {
 
 	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()
 	if err != nil {
 		return nil, err
 	}
-	tx, err := w.avsManager.RegisterAVS(noSendTxOpts,
-		avsName,
-		minStakeAmount,
-		taskAddr,
-		slashAddr,
-		rewardAddr,
-		avsOwnerAddress,
-		assetIds,
-		avsUnbondingPeriod,
-		minSelfDelegation,
-		epochIdentifier,
+	tx, err := w.avsManager.RegisterAVS(
+		noSendTxOpts,
 		params)
 	if err != nil {
 		return nil, err
@@ -159,7 +130,7 @@ func (w *ExoChainWriter) RegisterAVSToExocore(
 }
 func (w *ExoChainWriter) RegisterBLSPublicKey(
 	ctx context.Context,
-	name string,
+	avsAddr string,
 	pubKey []byte,
 	pubKeyRegistrationSignature []byte,
 	pubKeyRegistrationMessageHash []byte,
@@ -170,7 +141,7 @@ func (w *ExoChainWriter) RegisterBLSPublicKey(
 	}
 	tx, err := w.avsManager.RegisterBLSPublicKey(
 		noSendTxOpts,
-		name,
+		gethcommon.HexToAddress(avsAddr),
 		pubKey,
 		pubKeyRegistrationSignature,
 		pubKeyRegistrationMessageHash)

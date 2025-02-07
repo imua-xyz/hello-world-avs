@@ -9,7 +9,24 @@ IAVSManager constant AVSMANAGER_CONTRACT = IAVSManager(AVSMANAGER_PRECOMPILE_ADD
 /// @title AVS-Manager Precompile Contract
 /// @dev The interface through which solidity contracts will interact with AVS-Manager
 /// @custom:address 0x0000000000000000000000000000000000000901
-
+    struct AVSParams {
+        address sender;              // sender The external address for calling this method.
+        string avsName;              // avsName The name of AVS.
+        uint64 minStakeAmount;       // minStakeAmount The minimum amount of funds staked by each operator.
+        address taskAddr;            // taskAddr The task address of AVS.
+        address slashAddr;           // slashAddr The slash address of AVS.
+        address rewardAddr;          // rewardAddr The reward address of AVS.
+        address[] avsOwnerAddress;   // avsOwnerAddress The owners who have permission for AVS.
+        address[] whitelistAddress;  // The whitelist address of the operator.
+        string[] assetIds;           // assetIds The basic asset information of AVS.
+        uint64 avsUnbondingPeriod;   // avsUnbondingPeriod The unbonding duration of AVS.
+        uint64 minSelfDelegation;    // minSelfDelegation The minimum delegation amount for an operator.
+        string epochIdentifier;      // epochIdentifier The AVS epoch identifier.
+        uint64 miniOptInOperators;   // miniOptInOperators The minimum number of opt-in operators.
+        uint64 minTotalStakeAmount;  // minTotalStakeAmount The minimum total amount of stake by all operators.
+        uint64 avsRewardProportion;  // avsReward The proportion of reward for AVS.
+        uint64 avsSlashProportion;   // avsSlash The proportion of slash for AVS.
+    }
 interface IAVSManager {
     // note:string and bytes will be hashed. address / uintX will not be hashed when using indexed.
     event AVSRegistered(address indexed avsAddr, string sender, string avsName);
@@ -31,7 +48,7 @@ interface IAVSManager {
     event ChallengeInitiated(
         string sender, bytes taskHash, uint64 taskID, bytes taskResponseHash, string operatorAddress
     );
-    event PublicKeyRegistered(string sender, string name);
+    event PublicKeyRegistered(string sender, string avsAddr);
     event TaskSubmittedByOperator(
         address indexed taskContractAddress,
         uint64 indexed taskId,
@@ -42,65 +59,15 @@ interface IAVSManager {
     );
 
     /// @dev Register AVS contract to EXO.
-    /// @param sender The external address for calling this method.
-    /// @param avsName The name of AVS.
-    /// @param minStakeAmount The minimum amount of funds staked by each operator.
-    /// @param taskAddr The task address of AVS.
-    /// @param slashAddr The slash address of AVS.
-    /// @param rewardAddr The reward address of AVS.
-    /// @param avsOwnerAddress The owners who have permission for AVS.
-    /// @param assetIds The basic asset information of AVS.
-    /// @param avsUnbondingPeriod The unbonding duration of AVS.
-    /// @param minSelfDelegation The minimum delegation amount for an operator.
-    /// @param epochIdentifier The AVS epoch identifier.
-    /// @param params 1.miniOptInOperators The minimum number of opt-in operators.
-    ///2.minTotalStakeAmount The minimum total amount of stake by all operators.
-    ///3.avsReward The proportion of reward for AVS.
-    ///4.avsSlash The proportion of slash for AVS.
+    /// @param params The params of AVS.
     function registerAVS(
-        address sender,
-        string memory avsName,
-        uint64 minStakeAmount,
-        address taskAddr,
-        address slashAddr,
-        address rewardAddr,
-        string[] memory avsOwnerAddress,
-        string[] memory assetIds,
-        uint64 avsUnbondingPeriod,
-        uint64 minSelfDelegation,
-        string memory epochIdentifier,
-        uint64[] memory params
+        AVSParams calldata params
     ) external returns (bool success);
 
     /// @dev Update AVS info to EXO.
-    /// @param sender The external address for calling this method.
-    /// @param avsName The name of AVS.
-    /// @param minStakeAmount The minimum amount of funds staked by each operator.
-    /// @param taskAddr The task address of AVS.
-    /// @param slashAddr The slash address of AVS.
-    /// @param rewardAddr The reward address of AVS.
-    /// @param avsOwnerAddress The owners who have permission for AVS.
-    /// @param assetIds The basic asset information of AVS.
-    /// @param avsUnbondingPeriod The unbonding duration of AVS.
-    /// @param minSelfDelegation The minimum delegation amount for an operator.
-    /// @param epochIdentifier The AVS epoch identifier.
-    /// @param params 1.miniOptInOperators The minimum number of opt-in operators.
-    ///2.minTotalStakeAmount The minimum total amount of stake by all operators.
-    ///3.avsReward The proportion of reward for AVS.
-    ///4.avsSlash The proportion of slash for AVS.
+    /// @param params The params of AVS.
     function updateAVS(
-        address sender,
-        string memory avsName,
-        uint64 minStakeAmount,
-        address taskAddr,
-        address slashAddr,
-        address rewardAddr,
-        string[] memory avsOwnerAddress,
-        string[] memory assetIds,
-        uint64 avsUnbondingPeriod,
-        uint64 minSelfDelegation,
-        string memory epochIdentifier,
-        uint64[] memory params
+        AVSParams calldata params
     ) external returns (bool success);
 
     /// @dev Deregister avs from exo
@@ -145,18 +112,18 @@ interface IAVSManager {
         bytes calldata taskHash,
         uint64 taskID,
         bytes calldata taskResponseHash,
-        string memory operatorAddress
+        address  operatorAddress
     ) external returns (bool success);
 
     /// @dev Called by the avs manager service register an operator as the owner of a BLS public key.
     /// @param sender The external address for calling this method.
-    /// @param name the name of public keys
+    /// @param avsAddr The address of AVS.
     /// @param pubKey the public keys of the operator
     /// @param pubkeyRegistrationSignature the public keys of the operator
     /// @param pubkeyRegistrationMessageHash the public keys of the operator
     function registerBLSPublicKey(
         address sender,
-        string calldata name,
+        address avsAddr,
         bytes calldata pubKey,
         bytes calldata pubkeyRegistrationSignature,
         bytes calldata pubkeyRegistrationMessageHash
@@ -183,7 +150,7 @@ interface IAVSManager {
     /// QUERIES
     /// @dev Returns the pubkey and pubkey hash of an operator
     /// @param operator is the operator for whom the key is being registered
-    function getRegisteredPubkey(string memory operator) external view returns (bytes memory pubkey);
+    function getRegisteredPubkey(address operator,address avsAddr) external view returns (bytes memory pubkey);
 
     /// @dev Returns the operators of all opt-in in the current avs
     /// @param avsAddress avs address
@@ -198,7 +165,7 @@ interface IAVSManager {
     /// @param avsAddr The address of the avs
     /// @param operatorAddr The address of the operator
     /// @return amount The total USD share of specified operator and Avs.
-    function getOperatorOptedUSDValue(address avsAddr, string memory operatorAddr)
+    function getOperatorOptedUSDValue(address avsAddr, address operatorAddr)
     external
     view
     returns (uint256 amount);

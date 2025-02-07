@@ -44,30 +44,9 @@ contract AvsServiceContract {
     }
 
     function registerAVS(
-        string memory avsName,
-        uint64 minStakeAmount,
-        address taskAddr,
-        address slashAddr,
-        address rewardAddr,
-        string[] memory avsOwnerAddress,
-        string[] memory assetIds,
-        uint64 avsUnbondingPeriod,
-        uint64 minSelfDelegation,
-        string memory epochIdentifier,
-        uint64[] memory params
+        avs.AVSParams calldata params
     ) public returns (bool) {
         bool success =  avs.AVSMANAGER_CONTRACT.registerAVS(
-            msg.sender,
-            avsName,
-            minStakeAmount,
-            taskAddr,
-            slashAddr,
-            rewardAddr,
-            avsOwnerAddress,
-            assetIds,
-            avsUnbondingPeriod,
-            minSelfDelegation,
-            epochIdentifier,
             params
         );
         return success;
@@ -75,32 +54,10 @@ contract AvsServiceContract {
 
 
     function updateAVS(
-        string memory avsName,
-        uint64 minStakeAmount,
-        address taskAddr,
-        address slashAddr,
-        address rewardAddr,
-        string[] memory avsOwnerAddress,
-        string[] memory assetIds,
-        uint64 avsUnbondingPeriod,
-        uint64 minSelfDelegation,
-        string memory epochIdentifier,
-        uint64[] memory params
+        avs.AVSParams calldata params
     ) public returns (bool) {
         bool success =  avs.AVSMANAGER_CONTRACT.updateAVS(
-            msg.sender,
-            avsName,
-            minStakeAmount,
-            taskAddr,
-            slashAddr,
-            rewardAddr,
-            avsOwnerAddress,
-            assetIds,
-            avsUnbondingPeriod,
-            minSelfDelegation,
-            epochIdentifier,
             params
-
         );
         return success;
     }
@@ -122,14 +79,14 @@ contract AvsServiceContract {
     }
 
     function registerBLSPublicKey(
-        string memory name,
+        address  avsAddr,
         bytes memory pubKey,
         bytes memory pubKeyRegistrationSignature,
         bytes memory pubKeyRegistrationMessageHash
     ) public returns (bool) {
         bool success = avs.AVSMANAGER_CONTRACT.registerBLSPublicKey(
             msg.sender,
-            name,
+            avsAddr,
             pubKey,
             pubKeyRegistrationSignature,
             pubKeyRegistrationMessageHash
@@ -198,11 +155,12 @@ contract AvsServiceContract {
     }
 
 
-    function getRegisteredPubkey(string memory operator) public view returns (bytes memory) {
+    function getRegisteredPubkey(address operator,address avsAddr) public view returns (bytes memory) {
 
 
         return avs.AVSMANAGER_CONTRACT.getRegisteredPubkey(
-            operator
+            operator,
+            avsAddr
         );
     }
 
@@ -212,7 +170,7 @@ contract AvsServiceContract {
         );
         return amount;
     }
-    function getOperatorOptedUSDValue(address avsAddr,string memory operatorAddr) external view returns (uint256){
+    function getOperatorOptedUSDValue(address avsAddr,address operatorAddr) external view returns (uint256){
         uint256  amount = avs.AVSMANAGER_CONTRACT.getOperatorOptedUSDValue(
             avsAddr,
             operatorAddr

@@ -3,6 +3,7 @@ package avs
 import (
 	"context"
 	sdkmath "cosmossdk.io/math"
+	avs "github.com/ExocoreNetwork/exocore-avs/contracts/bindings/avs"
 	"github.com/ExocoreNetwork/exocore-avs/core"
 	chain "github.com/ExocoreNetwork/exocore-avs/core/chainio"
 	"github.com/ExocoreNetwork/exocore-avs/core/chainio/eth"
@@ -66,7 +67,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		logger.Info("AVS_ECDSA_KEY_PASSWORD env var not set. using empty string")
 	}
 
-	signerV2, _, err := signerv2.SignerFromConfig(signerv2.Config{
+	signerV2, senderAddress, err := signerv2.SignerFromConfig(signerv2.Config{
 		KeystorePath: c.AVSEcdsaPrivateKeyStorePath,
 		Password:     ecdsaKeyPassword,
 	}, chainId)
@@ -134,18 +135,26 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		return nil, err
 	}
 	if info == "" {
+		params := avs.AVSParams{
+			Sender:              senderAddress,
+			AvsName:             avsName,
+			MinStakeAmount:      c.MinStakeAmount,
+			TaskAddr:            common.HexToAddress(c.TaskAddress),
+			SlashAddr:           common.HexToAddress(c.AVSRewardAddress),
+			RewardAddr:          common.HexToAddress(c.AVSSlashAddress),
+			AvsOwnerAddress:     nil,
+			WhitelistAddress:    nil,
+			AssetIds:            c.AssetIds,
+			AvsUnbondingPeriod:  c.AvsUnbondingPeriod,
+			MinSelfDelegation:   c.MinSelfDelegation,
+			EpochIdentifier:     c.EpochIdentifier,
+			MiniOptInOperators:  1,
+			MinTotalStakeAmount: 1,
+			AvsRewardProportion: 5,
+			AvsSlashProportion:  5,
+		}
 		_, err = avsWriter.RegisterAVSToExocore(context.Background(),
-			avsName,
-			c.MinStakeAmount,
-			common.HexToAddress(c.TaskAddress),
-			common.HexToAddress(c.AVSRewardAddress),
-			common.HexToAddress(c.AVSSlashAddress),
-			c.AvsOwnerAddresses,
-			c.AssetIds,
-			c.AvsUnbondingPeriod,
-			c.MinSelfDelegation,
-			c.EpochIdentifier,
-			c.Params,
+			params,
 		)
 		if err != nil {
 			logger.Error("register Avs failed ", "err", err)
@@ -176,7 +185,7 @@ func (avs *Avs) Start(ctx context.Context) error {
 	err := avs.sendNewTask()
 	if err != nil {
 		// we log the errors inside sendNewTask() so here we just continue to do the next task
-		avs.logger.Warnf("sendNewTask encountered an error: %v; continuing to do the next task.", err)
+		avs.logger.Info("sendNewTask encountered an error: %v; continuing to do the next task.", err)
 	}
 	taskNum++
 	for {
@@ -189,7 +198,7 @@ func (avs *Avs) Start(ctx context.Context) error {
 			err := avs.sendNewTask()
 			if err != nil {
 				// we log the errors inside sendNewTask() so here we just continue to do the next task
-				avs.logger.Warnf("sendNewTask encountered an error: %v; continuing to do the next task.", err)
+				avs.logger.Info("sendNewTask encountered an error: %v; continuing to do the next task.", err)
 				continue
 			}
 			taskNum++
@@ -216,7 +225,7 @@ func (avs *Avs) sendNewTask() error {
 				"attempt", attempt,
 				"max_attempts", maxRetries)
 		} else {
-			avs.logger.Warn("AVS USD value is zero or negative",
+			avs.logger.Info("AVS USD value is zero or negative",
 				"value", taskPowerTotal,
 				"attempt", attempt,
 				"max_attempts", maxRetries)

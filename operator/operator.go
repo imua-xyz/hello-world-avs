@@ -194,7 +194,7 @@ func (o *Operator) Start(ctx context.Context) error {
 		panic(fmt.Sprintf("Operator is not registered: %s", operatorAddress))
 	}
 
-	pubKey, err := o.avsReader.GetRegisteredPubkey(&bind.CallOpts{}, operatorAddress)
+	pubKey, err := o.avsReader.GetRegisteredPubkey(&bind.CallOpts{}, operatorAddress, o.avsAddr.String())
 	if err != nil {
 		o.logger.Error("Cannot exec GetRegisteredPubKey", "err", err)
 		return err
@@ -457,7 +457,7 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 			// case WeekEpochID:
 			// 	sleepDuration = 7 * 24 * time.Hour
 			// default:
-			// 	o.logger.Warn("Unknown epoch identifier", "epochIdentifier", epochIdentifier)
+			// 	o.logger.Info("Unknown epoch identifier", "epochIdentifier", epochIdentifier)
 			// 	sleepDuration = time.Minute // Default to a safe short duration
 			// }
 

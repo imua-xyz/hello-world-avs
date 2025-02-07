@@ -18,6 +18,7 @@ type ExoReader interface {
 	GetRegisteredPubkey(
 		opts *bind.CallOpts,
 		operator string,
+		avsAddress string,
 	) ([]byte, error)
 	GtAVSUSDValue(
 		opts *bind.CallOpts,
@@ -104,10 +105,10 @@ func (r *ExoChainReader) GetOptInOperators(
 	return operators, nil
 }
 
-func (r *ExoChainReader) GetRegisteredPubkey(opts *bind.CallOpts, operator string) ([]byte, error) {
+func (r *ExoChainReader) GetRegisteredPubkey(opts *bind.CallOpts, operator string, avsAddress string) ([]byte, error) {
 	pukKey, err := r.avsManager.GetRegisteredPubkey(
 		opts,
-		operator)
+		gethcommon.HexToAddress(operator), gethcommon.HexToAddress(avsAddress))
 	if err != nil {
 		r.logger.Error("Failed to GetRegisteredPubkey ", "err", err)
 		return nil, err
@@ -129,7 +130,7 @@ func (r *ExoChainReader) GtAVSUSDValue(opts *bind.CallOpts, avsAddress string) (
 func (r *ExoChainReader) GetOperatorOptedUSDValue(opts *bind.CallOpts, avsAddress string, operatorAddr string) (sdkmath.LegacyDec, error) {
 	amount, err := r.avsManager.GetOperatorOptedUSDValue(
 		opts,
-		gethcommon.HexToAddress(avsAddress), operatorAddr)
+		gethcommon.HexToAddress(avsAddress), gethcommon.HexToAddress(operatorAddr))
 	if err != nil {
 		r.logger.Error("Failed to GetOperatorOptedUSDValue ", "err", err)
 		return sdkmath.LegacyDec{}, err
