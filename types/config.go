@@ -19,11 +19,11 @@ type NodeConfig struct {
 	AvsName            string   `yaml:"avs_name"`
 	MinStakeAmount     uint64   `yaml:"min_stake_amount"`
 	AvsOwnerAddresses  []string `yaml:"avs_owner_addresses"`
+	WhitelistAddresses []string `yaml:"whitelist_addresses"`
 	AssetIds           []string `yaml:"asset_ids"`
 	AvsUnbondingPeriod uint64   `yaml:"avs_unbonding_period"`
 	MinSelfDelegation  uint64   `yaml:"min_self_delegation"`
 	EpochIdentifier    string   `yaml:"epoch_identifier"`
-	Params             []uint64 `yaml:"params"`
 	TaskAddress        string   `yaml:"task_address"`
 	AVSRewardAddress   string   `yaml:"avs_reward_address"`
 	AVSSlashAddress    string   `yaml:"avs_slash_address"`
@@ -34,9 +34,13 @@ type NodeConfig struct {
 	TaskChallengePeriod   uint64 `yaml:"task_challenge_period"`
 	ThresholdPercentage   uint64 `yaml:"threshold_percentage"`
 	TaskStatisticalPeriod uint64 `yaml:"task_statistical_period"`
+	MiniOptInOperators    uint64 `yaml:"mini_opt_in_operators"`  // the minimum number of opt-in operators
+	MinTotalStakeAmount   uint64 `yaml:"min_total_stake_amount"` // the minimum total amount of stake by all operators
+	AvsRewardProportion   uint64 `yaml:"avs_reward_proportion"`  // the proportion of reward for AVS
+	AvsSlashProportion    uint64 `yaml:"avs_slash_proportion"`   // the proportion of slash for AVS
 
 	// deposit and delegation
-	DepositAmount int64 `yaml:"deposit_amount"`
-	DelegateAmount int64 `yaml:"delegate_amount"`
-	Staker 	   string `yaml:"staker"`
+	DepositAmount  int64  `yaml:"deposit_amount"`
+	DelegateAmount int64  `yaml:"delegate_amount"`
+	Staker         string `yaml:"staker"`
 }

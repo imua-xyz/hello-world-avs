@@ -67,7 +67,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		logger.Info("AVS_ECDSA_KEY_PASSWORD env var not set. using empty string")
 	}
 
-	signerV2, senderAddress, err := signerv2.SignerFromConfig(signerv2.Config{
+	signerV2, _, err := signerv2.SignerFromConfig(signerv2.Config{
 		KeystorePath: c.AVSEcdsaPrivateKeyStorePath,
 		Password:     ecdsaKeyPassword,
 	}, chainId)
@@ -136,14 +136,14 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 	}
 	if info == "" {
 		params := avs.AVSParams{
-			Sender:              senderAddress,
+			Sender:              common.HexToAddress(c.AVSOwnerAddress),
 			AvsName:             avsName,
 			MinStakeAmount:      c.MinStakeAmount,
 			TaskAddr:            common.HexToAddress(c.TaskAddress),
 			SlashAddr:           common.HexToAddress(c.AVSRewardAddress),
 			RewardAddr:          common.HexToAddress(c.AVSSlashAddress),
-			AvsOwnerAddress:     nil,
-			WhitelistAddress:    nil,
+			AvsOwnerAddress:     core.ConvertToEthAddresses(c.AvsOwnerAddresses),
+			WhitelistAddress:    core.ConvertToEthAddresses(c.WhitelistAddresses),
 			AssetIds:            c.AssetIds,
 			AvsUnbondingPeriod:  c.AvsUnbondingPeriod,
 			MinSelfDelegation:   c.MinSelfDelegation,

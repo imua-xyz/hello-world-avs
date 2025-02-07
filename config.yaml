@@ -3,9 +3,9 @@ production: false
 #The eoa address of Operato, used for sending transactions
 operator_address: 0x4b99E597121C99ba5846c32bd49d8A4B95457f8C
 #The eoa address of avs owner, used for sending transactions
-avs_owner_address: 0x3e108c058e8066DA635321Dc3018294cA82ddEdf
+avs_owner_address: p
 #Address of deployed AVS contract
-avs_address: 0xd435E4B60c9Bcb37d83714605676f4b0774511C0
+avs_address: 0x1137BAB4646bCBA178e1a0D7663890ceb3ED6B4e
 # ETH RPC URL
 eth_rpc_url: http://127.0.0.1:8545
 eth_ws_url: ws://127.0.0.1:8546
@@ -19,21 +19,23 @@ register_operator_on_startup: false
 avs_name: "hello-avs"
 min_stake_amount: 1
 avs_owner_addresses:
-  - "exo18cggcpvwspnd5c6ny8wrqxpffj5zmhklprtnph"
-  - "exo14uyrx67x4rgkns62f60y6cnkud30gat7a20fdx"
+  - "0x4b99E597121C99ba5846c32bd49d8A4B95457f8C"
+  - "0x3e108c058e8066DA635321Dc3018294cA82ddEdf"
+whitelist_addresses:
+  - "0x4b99E597121C99ba5846c32bd49d8A4B95457f8C"
+  - "0x3e108c058e8066DA635321Dc3018294cA82ddEdf"
 asset_ids:
   - "0xdac17f958d2ee523a2206206994597c13d831ec7_0x65"
 avs_unbonding_period: 7
 min_self_delegation: 0
 epoch_identifier: minute
-avs_reward_address: 0xd435E4B60c9Bcb37d83714605676f4b0774511C0
-avs_slash_address: 0xd435E4B60c9Bcb37d83714605676f4b0774511C0
-task_address: 0xd435E4B60c9Bcb37d83714605676f4b0774511C0
-params:
-  - 5
-  - 7
-  - 8
-  - 4
+avs_reward_address: 0x1137BAB4646bCBA178e1a0D7663890ceb3ED6B4e
+avs_slash_address: 0x1137BAB4646bCBA178e1a0D7663890ceb3ED6B4e
+task_address: 0x1137BAB4646bCBA178e1a0D7663890ceb3ED6B4e
+mini_opt_in_operators: 3
+min_total_stake_amount: 3
+avs_reward_proportion: 3
+avs_slash_proportion: 3
 #create new task parameters
 #Create task intervals,Unit second
 create_task_interval: 20

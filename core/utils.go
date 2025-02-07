@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"gopkg.in/yaml.v3"
 	"math/big"
@@ -91,4 +92,16 @@ func GetFileInCurrentDirectory(filename string) (string, error) {
 	}
 
 	return fullPath, nil
+}
+func ConvertToEthAddresses(strArray []string) []common.Address {
+	var ethAddresses []common.Address
+
+	if len(strArray) > 0 {
+		for _, str := range strArray {
+			address := common.HexToAddress(str)
+			ethAddresses = append(ethAddresses, address)
+		}
+	}
+
+	return ethAddresses
 }
