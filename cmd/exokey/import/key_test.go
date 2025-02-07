@@ -8,7 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"strings"
 
-	"github.com/prysmaticlabs/prysm/v4/crypto/bls/blst"
+	"github.com/prysmaticlabs/prysm/v5/crypto/bls/blst"
 	"os"
 	"path/filepath"
 	"testing"

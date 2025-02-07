@@ -19,7 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	blscommon "github.com/prysmaticlabs/prysm/v4/crypto/bls/common"
+	blscommon "github.com/prysmaticlabs/prysm/v5/crypto/bls/common"
 	"math/big"
 	"os"
 )

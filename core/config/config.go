@@ -10,7 +10,7 @@ import (
 	sdklogging "github.com/ExocoreNetwork/exocore-sdk/logging"
 	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
 
-	blscommon "github.com/prysmaticlabs/prysm/v4/crypto/bls/common"
+	blscommon "github.com/prysmaticlabs/prysm/v5/crypto/bls/common"
 )
 
 type Config struct {
