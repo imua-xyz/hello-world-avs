@@ -104,14 +104,22 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		logger.Info("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
 	}
 
-	signerV2, _, err := signerv2.SignerFromConfig(signerv2.Config{
+	signerV2, operatorSender, err := signerv2.SignerFromConfig(signerv2.Config{
 		KeystorePath: c.OperatorEcdsaPrivateKeyStorePath,
 		Password:     ecdsaKeyPassword,
 	}, chainId)
 	if err != nil {
 		panic(err)
 	}
+	logger.Info("operatorSender:", "operatorSender", operatorSender.String())
 
+	balance, err := ethRpcClient.BalanceAt(context.Background(), operatorSender, nil)
+	if err != nil {
+		logger.Error("Cannot get Balance", "err", err)
+	}
+	if balance.Cmp(big.NewInt(0)) != 1 {
+		logger.Error("operatorSender has not enough Balance")
+	}
 	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, common.HexToAddress(c.OperatorAddress))
 
 	avsReader, _ := chain.BuildExoChainReader(
@@ -206,7 +214,7 @@ func (o *Operator) Start(ctx context.Context) error {
 		sig := o.blsKeypair.Sign(msgBytes)
 		_, err = o.avsWriter.RegisterBLSPublicKey(
 			context.Background(),
-			o.operatorAddr.String(),
+			o.avsAddr.String(),
 			o.blsKeypair.PublicKey().Marshal(),
 			sig.Marshal(),
 			msgBytes)

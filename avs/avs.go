@@ -15,6 +15,7 @@ import (
 	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"math/big"
 	"math/rand"
 	"os"
 	"time"
@@ -67,14 +68,22 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		logger.Info("AVS_ECDSA_KEY_PASSWORD env var not set. using empty string")
 	}
 
-	signerV2, _, err := signerv2.SignerFromConfig(signerv2.Config{
+	signerV2, avsSender, err := signerv2.SignerFromConfig(signerv2.Config{
 		KeystorePath: c.AVSEcdsaPrivateKeyStorePath,
 		Password:     ecdsaKeyPassword,
 	}, chainId)
 	if err != nil {
 		panic(err)
 	}
+	logger.Info("avsSender:", "avsSender", avsSender.String())
 
+	balance, err := ethRpcClient.BalanceAt(context.Background(), avsSender, nil)
+	if err != nil {
+		logger.Error("Cannot get Balance", "err", err)
+	}
+	if balance.Cmp(big.NewInt(0)) != 1 {
+		logger.Error("avsSender has not enough Balance")
+	}
 	if c.AVSAddress == "" {
 		logger.Info("AVS_ADDRESS env var not set. will deploy avs contract")
 

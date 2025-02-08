@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"strings"
 )
@@ -49,7 +50,10 @@ func (o *Operator) RegisterOperatorWithAvs() error {
 		return err
 	}
 	str := strings.Join(operators, "")
-	found := strings.Contains(str, o.operatorAddr.String())
+	config := sdk.GetConfig()
+	config.SetBech32PrefixForAccount("exo", "exopub")
+	var accAddr sdk.AccAddress = o.operatorAddr[:]
+	found := strings.Contains(str, accAddr.String())
 	if !found {
 		o.logger.Info("Operator is not opt-in this avs.")
 		_, err = o.avsWriter.RegisterOperatorToAVS(context.Background())
