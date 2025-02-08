@@ -20,7 +20,7 @@ type NodeConfig struct {
 	MinStakeAmount     uint64   `yaml:"min_stake_amount"`
 	AvsOwnerAddresses  []string `yaml:"avs_owner_addresses"`
 	WhitelistAddresses []string `yaml:"whitelist_addresses"`
-	AssetIds           []string `yaml:"asset_ids"`
+	AssetIDs           []string `yaml:"asset_ids"`
 	AvsUnbondingPeriod uint64   `yaml:"avs_unbonding_period"`
 	MinSelfDelegation  uint64   `yaml:"min_self_delegation"`
 	EpochIdentifier    string   `yaml:"epoch_identifier"`

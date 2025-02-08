@@ -153,7 +153,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 			RewardAddr:          common.HexToAddress(c.AVSSlashAddress),
 			AvsOwnerAddress:     core.ConvertToEthAddresses(c.AvsOwnerAddresses),
 			WhitelistAddress:    core.ConvertToEthAddresses(c.WhitelistAddresses),
-			AssetIds:            c.AssetIds,
+			AssetIDs:            c.AssetIDs,
 			AvsUnbondingPeriod:  c.AvsUnbondingPeriod,
 			MinSelfDelegation:   c.MinSelfDelegation,
 			EpochIdentifier:     c.EpochIdentifier,
