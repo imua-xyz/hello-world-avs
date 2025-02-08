@@ -202,7 +202,7 @@ func (o *Operator) Start(ctx context.Context) error {
 		panic(fmt.Sprintf("Operator is not registered: %s", operatorAddress))
 	}
 
-	pubKey, err := o.avsReader.GetRegisteredPubkey(&bind.CallOpts{}, operatorAddress, o.avsAddr.String())
+	pubKey, err := o.avsReader.GetRegisteredPubkey(&bind.CallOpts{}, o.operatorAddr.String(), o.avsAddr.String())
 	if err != nil {
 		o.logger.Error("Cannot exec GetRegisteredPubKey", "err", err)
 		return err
