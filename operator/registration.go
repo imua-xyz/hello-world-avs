@@ -22,7 +22,6 @@ func (o *Operator) registerOperatorOnStartup() {
 	if err != nil {
 		o.logger.Fatal("Error registering operator with avs", "err", err)
 	}
-	o.logger.Infof("Registered operator with avs")
 }
 func (o *Operator) RegisterOperatorWithExocore() error {
 	flag, err := o.avsReader.IsOperator(&bind.CallOpts{}, o.operatorAddr.String())
@@ -63,7 +62,7 @@ func (o *Operator) RegisterOperatorWithAvs() error {
 		}
 	}
 
-	o.logger.Infof("Registered operator with avs.")
+	o.logger.Info("Operator has opt-in this avs:", "avsAddr", o.avsAddr.String())
 
 	return nil
 }

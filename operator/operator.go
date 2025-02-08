@@ -226,7 +226,7 @@ func (o *Operator) Start(ctx context.Context) error {
 	}
 
 	// check operator delegation usd amount
-	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), operatorAddress)
+	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), o.operatorAddr.String())
 	if err != nil {
 		o.logger.Error("Cannot exec GetOperatorOptedUSDValue", "err", err)
 		return err
