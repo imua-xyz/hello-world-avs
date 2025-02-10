@@ -120,6 +120,9 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	if balance.Cmp(big.NewInt(0)) != 1 {
 		logger.Error("operatorSender has not enough Balance")
 	}
+	if c.OperatorAddress != operatorSender.String() {
+		logger.Error("operatorSender is not equal OperatorAddress")
+	}
 	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, common.HexToAddress(c.OperatorAddress))
 
 	avsReader, _ := chain.BuildExoChainReader(

@@ -42,7 +42,7 @@ func GetTaskResponseDigestEncodeByjson(h TaskResponse) ([32]byte, []byte, error)
 
 func UpdateYAMLWithComments(filePath, key, newValue string) error {
 	if newValue == "" {
-		panic("avsAddress param is nil")
+		panic("param is nil")
 	}
 	// Read the original YAML file content
 	data, err := os.ReadFile(filepath.Clean(filePath))

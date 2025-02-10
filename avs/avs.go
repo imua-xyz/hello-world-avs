@@ -76,6 +76,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		panic(err)
 	}
 	logger.Info("avsSender:", "avsSender", avsSender.String())
+	logger.Info("AVSOwnerAddress:", "AVSOwnerAddress", c.AVSOwnerAddress)
 
 	balance, err := ethRpcClient.BalanceAt(context.Background(), avsSender, nil)
 	if err != nil {
@@ -84,7 +85,15 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 	if balance.Cmp(big.NewInt(0)) != 1 {
 		logger.Error("avsSender has not enough Balance")
 	}
-	if c.AVSAddress == "" {
+	if c.AVSOwnerAddress != avsSender.String() {
+		logger.Error("avsSender is not equal AVSOwnerAddress")
+	}
+	code, err := ethRpcClient.CodeAt(context.Background(), common.HexToAddress(c.AVSAddress), nil)
+	if err != nil {
+		logger.Error("Cannot get code", "err", err)
+	}
+
+	if c.AVSAddress == "" || len(code) < 3 {
 		logger.Info("AVS_ADDRESS env var not set. will deploy avs contract")
 
 		key, err := sdkEcdsa.ReadKey(c.AVSEcdsaPrivateKeyStorePath, ecdsaKeyPassword)
@@ -118,7 +127,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		}
 	}
 
-	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, common.HexToAddress(c.AVSOwnerAddress))
+	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, avsSender)
 	avsWriter, err := chain.BuildExoChainWriter(
 		common.HexToAddress(c.AVSAddress),
 		ethRpcClient,
