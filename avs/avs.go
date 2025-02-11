@@ -23,7 +23,7 @@ import (
 
 const (
 	avsName    = "hello-avs-demo"
-	maxRetries = 10
+	maxRetries = 20
 	retryDelay = 5 * time.Second
 )
 
