@@ -27,6 +27,52 @@ IAVSManager constant AVSMANAGER_CONTRACT = IAVSManager(AVSMANAGER_PRECOMPILE_ADD
         uint64 avsRewardProportion;  // avsReward The proportion of reward for AVS.
         uint64 avsSlashProportion;   // avsSlash The proportion of slash for AVS.
     }
+/// @dev The TaskInfo struct.
+/// @param taskContractAddress The address of the avs task
+/// @param name The name of the task
+/// @param hash is the hash value of the task struct, data supplied by the contract, usually ABI-encoded.
+/// @param taskID The id of task.
+/// @param taskResponsePeriod The deadline for task response.
+/// @param taskStatisticalPeriod The statistical period for the task.
+/// @param taskChallengePeriod The challenge period for the task.
+/// @param thresholdPercentage The signature threshold percentage.
+/// @param startingEpoch is the integer identifier of the epoch module, accounting for current_epoch + 1
+/// @param actualThreshold is the Actual threshold
+/// @param optInOperators when creating a task, the actual opt-in operators at this moment
+/// @param signedOperators is Actual operators of signatures already signed
+/// @param noSignedOperators is the final  unsigned operators
+/// @param errSignedOperators is the operators which final incorrect signatures
+/// @param taskTotalPower is the USD value owned by the avs task itself.
+/// @param operatorActivePower is a power list of operators opt-in to the current task
+/// @param isExpected indicates whether the task meets expectations
+/// @param eligibleRewardOperators list of operator that are eligible for rewards,the contract deployed by avs provides validation rules
+/// @param eligibleSlashOperators  list of operator that are eligible for slash,the contract deployed by avs provides validation rules
+    struct TaskInfo {
+        address taskContractAddress;
+        string name;
+        bytes hash;
+        uint64 taskId;
+        uint64 taskResponsePeriod;
+        uint64 taskStatisticalPeriod;
+        uint64 taskChallengePeriod;
+        uint8 thresholdPercentage;
+        uint64 startingEpoch;
+        string actualThreshold;
+        address[] optInOperators;
+        address[] signedOperators;
+        address[] noSignedOperators;
+        address[] errSignedOperators;
+        string taskTotalPower;
+        OperatorActivePower[] operatorActivePower;
+        bool isExpected;
+        address[] eligibleRewardOperators;
+        address[] eligibleSlashOperators;
+    }
+    struct OperatorActivePower {
+        address operator;
+        uint256 power;
+    }
+
 interface IAVSManager {
     // note:string and bytes will be hashed. address / uintX will not be hashed when using indexed.
     event AVSRegistered(address indexed avsAddress, string sender, string avsName);
@@ -86,7 +132,7 @@ interface IAVSManager {
     /// @dev CreateTask , avs owner create a new task
     /// @param sender The external address for calling this method.
     /// @param name The name of the task.
-    /// @param hash The data supplied by the contract, usually ABI-encoded.
+    /// @param hash is the hash value of the task struct, data supplied by the contract, usually ABI-encoded.
     /// @param taskResponsePeriod The deadline for task response.
     /// @param taskChallengePeriod The challenge period for the task.
     /// @param thresholdPercentage The signature threshold percentage.
@@ -97,22 +143,16 @@ interface IAVSManager {
         bytes calldata hash,
         uint64 taskResponsePeriod,
         uint64 taskChallengePeriod,
-        uint64 thresholdPercentage,
+        uint8 thresholdPercentage,
         uint64 taskStatisticalPeriod
     ) external returns (uint64 taskID);
 
     /// @dev challenge ,  this function enables a challenger to raise and resolve a challenge.
     /// @param sender The external address for calling this method.
-    /// @param taskHash The data supplied by the contract, usually ABI-encoded.
-    /// @param taskID The id of task.
-    /// @param taskResponseHash The hash of task response.
-    /// @param operatorAddress operator address.
+    /// @param taskInfo The data supplied by the contract, usually ABI-encoded.
     function challenge(
         address sender,
-        bytes calldata taskHash,
-        uint64 taskID,
-        bytes calldata taskResponseHash,
-        address  operatorAddress
+        TaskInfo calldata taskInfo
     ) external returns (bool success);
 
     /// @dev Called by the avs manager service register an operator as the owner of a BLS public key.
@@ -178,11 +218,7 @@ interface IAVSManager {
     /// @dev getTaskInfo  is a function to query task info.
     /// @param taskAddress The address of the avs task
     /// @param taskID The id of task.
-    /// @return info Array containing task information in the following order:
-    /// [0] = startingEpochNumber
-    /// [1] = taskResponsePeriod
-    /// [2] = taskStatisticalPeriod
-    function getTaskInfo(address taskAddress, uint64 taskID) external view returns (uint64[] memory info);
+    function getTaskInfo(address taskAddress, uint64 taskID) external view returns (TaskInfo memory taskInfo);
 
     /// @dev isOperator checks if the given address is registered as an operator on exocore.
     /// @param operatorAddress The address of the operator
@@ -191,4 +227,10 @@ interface IAVSManager {
     /// @dev getCurrentEpoch obtain the specified current epoch based on epochIdentifier.
     /// @param epochIdentifier  is a descriptive or unique identifier for the epoch
     function getCurrentEpoch(string memory epochIdentifier) external view returns (int64 currentEpoch);
+
+    /// @dev getOperatorTaskResponse  is a function to query task result which operator submit.
+    /// @param taskAddress The address of the avs task
+    /// @param taskID The id of task.
+    function getOperatorTaskResponse(address taskAddress,uint64 taskID) external view returns (bytes[] memory taskResponse);
+
 }

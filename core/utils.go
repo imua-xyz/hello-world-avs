@@ -7,14 +7,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"gopkg.in/yaml.v3"
-	"math/big"
 	"os"
 	"path/filepath"
 )
 
 type TaskResponse struct {
-	TaskID    uint64
-	NumberSum *big.Int
+	TaskID            uint64
+	NumberToBeSquared uint64
 }
 
 // MarshalTaskResponse GetTaskResponseDigestEncodeByjson returns the hash of the TaskResponse, which is what operators sign over

@@ -31,6 +31,7 @@ type ExoWriter interface {
 	CreateNewTask(
 		ctx context.Context,
 		name string,
+		numberToBeSquared uint64,
 		taskResponsePeriod uint64,
 		taskChallengePeriod uint64,
 		thresholdPercentage uint64,
@@ -159,6 +160,7 @@ func (w *ExoChainWriter) RegisterBLSPublicKey(
 func (w *ExoChainWriter) CreateNewTask(
 	ctx context.Context,
 	name string,
+	numberToBeSquared uint64,
 	taskResponsePeriod uint64,
 	taskChallengePeriod uint64,
 	thresholdPercentage uint64,
@@ -171,6 +173,7 @@ func (w *ExoChainWriter) CreateNewTask(
 	tx, err := w.avsManager.CreateNewTask(
 		noSendTxOpts,
 		name,
+		numberToBeSquared,
 		taskResponsePeriod,
 		taskChallengePeriod,
 		thresholdPercentage,

@@ -262,6 +262,7 @@ func (avs *Avs) sendNewTask() error {
 	_, err := avs.avsWriter.CreateNewTask(
 		context.Background(),
 		GenerateRandomName(5),
+		rand.Uint64(),
 		avs.taskResponsePeriod,
 		avs.taskChallengePeriod,
 		avs.thresholdPercentage,

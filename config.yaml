@@ -5,7 +5,7 @@ operator_address: 0x3e108c058e8066DA635321Dc3018294cA82ddEdf
 #The eoa address of avs owner, used for sending transactions
 avs_owner_address: 0x4b99E597121C99ba5846c32bd49d8A4B95457f8C
 #Address of deployed AVS contract
-avs_address: 0x190c38fDe88360B4E9ad53007cabFfe71053309f
+avs_address: 0x10Ed22D975453A5D4031440D51624552E4f204D5
 # ETH RPC URL
 eth_rpc_url: http://127.0.0.1:8545
 eth_ws_url: ws://127.0.0.1:8546
@@ -29,9 +29,9 @@ asset_ids:
 avs_unbonding_period: 7
 min_self_delegation: 0
 epoch_identifier: minute
-avs_reward_address: 0x190c38fDe88360B4E9ad53007cabFfe71053309f
-avs_slash_address: 0x190c38fDe88360B4E9ad53007cabFfe71053309f
-task_address: 0x190c38fDe88360B4E9ad53007cabFfe71053309f
+avs_reward_address: 0x10Ed22D975453A5D4031440D51624552E4f204D5
+avs_slash_address: 0x10Ed22D975453A5D4031440D51624552E4f204D5
+task_address: 0x10Ed22D975453A5D4031440D51624552E4f204D5
 mini_opt_in_operators: 3
 min_total_stake_amount: 3
 avs_reward_proportion: 3

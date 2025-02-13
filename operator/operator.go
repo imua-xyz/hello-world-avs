@@ -228,6 +228,14 @@ func (o *Operator) Start(ctx context.Context) error {
 		}
 	}
 
+	pubKey, err = o.avsReader.GetRegisteredPubkey(&bind.CallOpts{}, o.operatorAddr.String(), o.avsAddr.String())
+	if err != nil {
+		o.logger.Error("Cannot exec GetRegisteredPubKey", "err", err)
+		return err
+	}
+	if len(pubKey) == 0 {
+		o.logger.Error("Cannot exec GetRegisteredPubKey", "err", err)
+	}
 	// check operator delegation usd amount
 	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), o.operatorAddr.String())
 	if err != nil {
@@ -354,11 +362,13 @@ func (o *Operator) ProcessNewTaskCreatedLog(eventArgs []interface{}) *core.TaskR
 	o.logger.Info("Received new task",
 		"id", eventArgs[0].(*big.Int),
 		"name", eventArgs[2].(string),
+		"numberToBeSquared", eventArgs[3].(uint64),
 	)
 	taskId := eventArgs[0].(*big.Int)
+	numberToBeSquared := eventArgs[3].(uint64)
 	taskResponse := &core.TaskResponse{
-		TaskID:    taskId.Uint64(),
-		NumberSum: taskId,
+		TaskID:            taskId.Uint64(),
+		NumberToBeSquared: numberToBeSquared * numberToBeSquared,
 	}
 	return taskResponse
 }
