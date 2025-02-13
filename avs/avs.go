@@ -17,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"math/rand"
-	"os"
 	"time"
 )
 
@@ -40,7 +39,7 @@ type Avs struct {
 }
 
 // NewAvs creates a new Avs with the provided config.
-func NewAvs(c *types.NodeConfig) (*Avs, error) {
+func NewAvs(c *types.NodeConfig, configPath string) (*Avs, error) {
 	var logLevel sdklogging.LogLevel
 	if c.Production {
 		logLevel = sdklogging.Production
@@ -63,11 +62,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		return nil, err
 	}
 
-	ecdsaKeyPassword, ok := os.LookupEnv("AVS_ECDSA_KEY_PASSWORD")
-	if !ok {
-		logger.Info("AVS_ECDSA_KEY_PASSWORD env var not set. using empty string")
-	}
-
+	ecdsaKeyPassword := ""
 	signerV2, avsSender, err := signerv2.SignerFromConfig(signerv2.Config{
 		KeystorePath: c.AVSEcdsaPrivateKeyStorePath,
 		Password:     ecdsaKeyPassword,
@@ -112,7 +107,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		c.TaskAddress = avsAddr.String()
 		c.AVSRewardAddress = avsAddr.String()
 		c.AVSSlashAddress = avsAddr.String()
-		filePath, err := core.GetFileInCurrentDirectory("config.yaml")
+		filePath, err := core.GetFileInCurrentDirectory(configPath)
 		if err != nil {
 			panic(err)
 		}

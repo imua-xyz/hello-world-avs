@@ -21,7 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	blscommon "github.com/prysmaticlabs/prysm/v5/crypto/bls/common"
 	"math/big"
-	"os"
 )
 
 const (
@@ -38,21 +37,21 @@ const (
 )
 
 type Operator struct {
-	config        types.NodeConfig
-	logger        sdklogging.Logger
-	ethClient     eth.EthClient
-	nodeApi       *nodeapi.NodeApi
-	avsWriter     chain.ExoWriter
-	avsReader     chain.ExoChainReader
-	avsSubscriber chain.AvsRegistrySubscriber
+	config         types.NodeConfig
+	logger         sdklogging.Logger
+	ethClient      eth.EthClient
+	nodeApi        *nodeapi.NodeApi
+	avsWriters     []chain.ExoWriter
+	avsReaders     []chain.ExoChainReader
+	avsSubscribers []chain.AvsRegistrySubscriber
 
-	blsKeypair   blscommon.SecretKey
+	blsKeypairs  []blscommon.SecretKey
 	operatorAddr common.Address
 	// receive new tasks in this chan (typically from listening to onchain event)
 	newTaskCreatedChan chan *avs.ContracthelloWorldTaskCreated
 	// needed when opting in to avs (allow this service manager contract to slash operator)
-	avsAddr         common.Address
-	epochIdentifier string
+	avsAddresses     []common.Address
+	epochIdentifiers []string
 }
 
 func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
@@ -83,14 +82,14 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		return nil, err
 	}
 
-	blsKeyPassword, ok := os.LookupEnv("OPERATOR_BLS_KEY_PASSWORD")
-	if !ok {
-		logger.Info("OPERATOR_BLS_KEY_PASSWORD env var not set. using empty string")
-	}
-	blsKeyPair, err := bls.ReadPrivateKeyFromFile(c.BlsPrivateKeyStorePath, blsKeyPassword)
-	if err != nil {
-		logger.Error("Cannot parse bls private key", "err", err)
-		return nil, err
+	var blsKeyPairs []blscommon.SecretKey
+	for _, path := range c.BlsPrivateKeyStorePath {
+		blsKeyPair, err := bls.ReadPrivateKeyFromFile(path, "")
+		if err != nil {
+			logger.Error("Cannot parse bls private key", "err", err)
+			return nil, err
+		}
+		blsKeyPairs = append(blsKeyPairs, blsKeyPair)
 	}
 
 	chainId, err := ethRpcClient.ChainID(context.Background())
@@ -99,11 +98,7 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		return nil, err
 	}
 
-	ecdsaKeyPassword, ok := os.LookupEnv("OPERATOR_ECDSA_KEY_PASSWORD")
-	if !ok {
-		logger.Info("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
-	}
-
+	ecdsaKeyPassword := ""
 	signerV2, operatorSender, err := signerv2.SignerFromConfig(signerv2.Config{
 		KeystorePath: c.OperatorEcdsaPrivateKeyStorePath,
 		Password:     ecdsaKeyPassword,
@@ -124,46 +119,54 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		logger.Error("operatorSender is not equal OperatorAddress")
 	}
 	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, common.HexToAddress(c.OperatorAddress))
+	var hexes []common.Address
+	var avsReaders []chain.ExoChainReader
+	var avsWriters []chain.ExoWriter
+	var avsSubscribers []chain.AvsRegistrySubscriber
+	var epochIdentifiers []string
+	for _, strAddress := range c.AVSAddresses {
+		hexAddress := common.HexToAddress(strAddress)
+		hexes = append(hexes, hexAddress)
+		avsReader, _ := chain.BuildExoChainReader(
+			common.HexToAddress(strAddress),
+			ethRpcClient,
+			logger)
+		avsWriter, _ := chain.BuildExoChainWriter(
+			common.HexToAddress(strAddress),
+			ethRpcClient,
+			logger,
+			txMgr)
 
-	avsReader, _ := chain.BuildExoChainReader(
-		common.HexToAddress(c.AVSAddress),
-		ethRpcClient,
-		logger)
+		avsSubscriber, _ := chain.BuildAvsRegistryChainSubscriber(
+			common.HexToAddress(strAddress),
+			ethWsClient,
+			logger,
+		)
+		avsReaders = append(avsReaders, *avsReader)
+		avsWriters = append(avsWriters, avsWriter)
+		avsSubscribers = append(avsSubscribers, avsSubscriber)
 
-	avsWriter, _ := chain.BuildExoChainWriter(
-		common.HexToAddress(c.AVSAddress),
-		ethRpcClient,
-		logger,
-		txMgr)
-
-	avsSubscriber, _ := chain.BuildAvsRegistryChainSubscriber(
-		common.HexToAddress(c.AVSAddress),
-		ethWsClient,
-		logger,
-	)
-
-	if err != nil {
-		logger.Error("Cannot create AvsSubscriber", "err", err)
-		return nil, err
+		epochIdentifier, err := avsReader.GetAVSEpochIdentifier(&bind.CallOpts{}, strAddress)
+		if err != nil {
+			logger.Error("Cannot GetAVSEpochIdentifier", "err", err)
+			return nil, err
+		}
+		epochIdentifiers = append(epochIdentifiers, epochIdentifier)
 	}
-	epochIdentifier, err := avsReader.GetAVSEpochIdentifier(&bind.CallOpts{}, c.AVSAddress)
-	if err != nil {
-		logger.Error("Cannot GetAVSEpochIdentifier", "err", err)
-		return nil, err
-	}
+
 	operator := &Operator{
 		config:             c,
 		logger:             logger,
 		nodeApi:            nodeApi,
 		ethClient:          ethRpcClient,
-		avsWriter:          avsWriter,
-		avsReader:          *avsReader,
-		avsSubscriber:      avsSubscriber,
-		blsKeypair:         blsKeyPair,
+		avsWriters:         avsWriters,
+		avsReaders:         avsReaders,
+		avsSubscribers:     avsSubscribers,
+		blsKeypairs:        blsKeyPairs,
 		operatorAddr:       common.HexToAddress(c.OperatorAddress),
 		newTaskCreatedChan: make(chan *avs.ContracthelloWorldTaskCreated),
-		avsAddr:            common.HexToAddress(c.AVSAddress),
-		epochIdentifier:    epochIdentifier,
+		avsAddresses:       hexes,
+		epochIdentifiers:   epochIdentifiers,
 	}
 
 	if c.RegisterOperatorOnStartup {
@@ -174,10 +177,7 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		operator.registerOperatorOnStartup()
 	}
 
-	logger.Info("Operator info",
-		"operatorAddr", c.OperatorAddress,
-		"operatorKey", operator.blsKeypair.PublicKey().Marshal(),
-	)
+	logger.Info("Operator info", "operatorAddr", c.OperatorAddress)
 
 	return operator, nil
 }
@@ -188,79 +188,38 @@ func (o *Operator) Start(ctx context.Context) error {
 	// 3.operator accept staker delegation so that avs voting power is not 0, otherwise the task cannot be created
 	// 4.operator register BLSPublicKey
 	// 5.operator submit task
-
-	operatorAddress, err := SwitchEthAddressToExoAddress(o.operatorAddr.String())
-	if err != nil {
-		o.logger.Error("Cannot switch eth address to exo address", "err", err)
-		panic(err)
-	}
-
-	flag, err := o.avsReader.IsOperator(&bind.CallOpts{}, o.operatorAddr.String())
-	if err != nil {
-		o.logger.Error("Cannot exec IsOperator", "err", err)
-		return err
-	}
-	if !flag {
-		o.logger.Error("Operator is not registered.", "err", err)
-		panic(fmt.Sprintf("Operator is not registered: %s", operatorAddress))
-	}
-
-	pubKey, err := o.avsReader.GetRegisteredPubkey(&bind.CallOpts{}, o.operatorAddr.String(), o.avsAddr.String())
-	if err != nil {
-		o.logger.Error("Cannot exec GetRegisteredPubKey", "err", err)
-		return err
-	}
-
-	if len(pubKey) == 0 {
+	for i, avsWriter := range o.avsWriters {
 		// operator register BLSPublicKey  via evm tx
 		msgBytes := crypto.Keccak256Hash([]byte("hello-avs")).Bytes()
-		sig := o.blsKeypair.Sign(msgBytes)
-		_, err = o.avsWriter.RegisterBLSPublicKey(
+		sig := o.blsKeypairs[i].Sign(msgBytes)
+		_, err := avsWriter.RegisterBLSPublicKey(
 			context.Background(),
-			o.avsAddr.String(),
-			o.blsKeypair.PublicKey().Marshal(),
+			o.avsAddresses[i].String(),
+			o.blsKeypairs[i].PublicKey().Marshal(),
 			sig.Marshal(),
 			msgBytes)
-
 		if err != nil {
 			o.logger.Error("operator failed to registerBLSPublicKey", "err", err)
 			return err
 		}
 	}
-
-	pubKey, err = o.avsReader.GetRegisteredPubkey(&bind.CallOpts{}, o.operatorAddr.String(), o.avsAddr.String())
+	//depoist and delegate
+	err := o.Deposit()
 	if err != nil {
-		o.logger.Error("Cannot exec GetRegisteredPubKey", "err", err)
+		o.logger.Error("Cannot Deposit", "err", err)
 		return err
 	}
-	if len(pubKey) == 0 {
-		o.logger.Error("Cannot exec GetRegisteredPubKey", "err", err)
-	}
-	// check operator delegation usd amount
-	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), o.operatorAddr.String())
+	err = o.Delegate()
 	if err != nil {
-		o.logger.Error("Cannot exec GetOperatorOptedUSDValue", "err", err)
+		o.logger.Error("Cannot Delegate", "err", err)
+		return err
+	}
+	err = o.SelfDelegate()
+	if err != nil {
+		o.logger.Error("Cannot SelfDelegate", "err", err)
 		return err
 	}
 
-	if amount.IsZero() {
-		//depoist and delegate
-		err := o.Deposit()
-		if err != nil {
-			o.logger.Error("Cannot Deposit", "err", err)
-			return err
-		}
-		err = o.Delegate()
-		if err != nil {
-			o.logger.Error("Cannot Delegate", "err", err)
-			return err
-		}
-		err = o.SelfDelegate()
-		if err != nil {
-			o.logger.Error("Cannot SelfDelegate", "err", err)
-			return err
-		}
-	}
 	o.logger.Infof("Starting operator.")
 
 	if o.config.EnableNodeApi {
@@ -348,7 +307,7 @@ func (o *Operator) GetLog(height int64) error {
 					o.logger.Error("Failed to sign task response", "err", err)
 					continue
 				}
-				taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), taskResponse.TaskID)
+				taskInfo, _ := o.avsReaders.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), taskResponse.TaskID)
 				go o.SendSignedTaskResponseToExocore(context.Background(), taskResponse.TaskID, resBytes, sig, taskInfo)
 			}
 		}
@@ -382,7 +341,7 @@ func (o *Operator) SignTaskResponse(taskResponse *core.TaskResponse) ([]byte, []
 	}
 	msgBytes := taskResponseHash[:]
 
-	sig := o.blsKeypair.Sign(msgBytes)
+	sig := o.blsKeypairs.Sign(msgBytes)
 
 	return sig.Marshal(), data, nil
 }
@@ -404,13 +363,13 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 			return "", ctx.Err() // Gracefully exit if context is canceled
 		default:
 			// Fetch the current epoch information
-			epochIdentifier, err := o.avsReader.GetAVSEpochIdentifier(&bind.CallOpts{}, o.avsAddr.String())
+			epochIdentifier, err := o.avsReaders.GetAVSEpochIdentifier(&bind.CallOpts{}, o.avsAddr.String())
 			if err != nil {
 				o.logger.Error("Cannot GetAVSEpochIdentifier", "err", err)
 				return "", fmt.Errorf("failed to get AVS info: %w", err) // Stop on persistent error
 			}
 
-			num, err := o.avsReader.GetCurrentEpoch(&bind.CallOpts{}, epochIdentifier)
+			num, err := o.avsReaders.GetCurrentEpoch(&bind.CallOpts{}, epochIdentifier)
 			if err != nil {
 				o.logger.Error("Cannot exec GetCurrentEpoch", "err", err)
 				return "", fmt.Errorf("failed to get current epoch: %w", err) // Stop on persistent error
@@ -432,7 +391,7 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 					"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod)
 				o.logger.Info("Submitting task response for task response period",
 					"taskAddr", o.avsAddr.String(), "taskId", taskId, "operator-addr", o.operatorAddr)
-				_, err := o.avsWriter.OperatorSubmitTask(
+				_, err := o.avsWriters.OperatorSubmitTask(
 					ctx,
 					taskId,
 					nil,
@@ -449,7 +408,7 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 					"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod, "taskStatisticalPeriod", taskStatisticalPeriod)
 				o.logger.Info("Submitting task response for statistical period",
 					"taskAddr", o.avsAddr.String(), "taskId", taskId, "operator-addr", o.operatorAddr)
-				_, err := o.avsWriter.OperatorSubmitTask(
+				_, err := o.avsWriters.OperatorSubmitTask(
 					ctx,
 					taskId,
 					taskResponse,
@@ -465,32 +424,7 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 				o.logger.Info("Current epoch is not within expected range", "currentEpoch", currentEpoch)
 				return "", fmt.Errorf("current epoch %d is not within expected range %d", currentEpoch, startingEpoch)
 			}
-			// Disable the uselesss ticker.
-			// // Dynamic sleep based on the epoch identifier
-			// var sleepDuration time.Duration
-			// switch epochIdentifier {
-			// case DayEpochID:
-			// 	sleepDuration = 24 * time.Hour
-			// case HourEpochID:
-			// 	sleepDuration = time.Hour
-			// case MinuteEpochID:
-			// 	sleepDuration = time.Minute
-			// case WeekEpochID:
-			// 	sleepDuration = 7 * 24 * time.Hour
-			// default:
-			// 	o.logger.Info("Unknown epoch identifier", "epochIdentifier", epochIdentifier)
-			// 	sleepDuration = time.Minute // Default to a safe short duration
-			// }
 
-			// // Use a ticker instead of time.Sleep for more control and graceful handling
-			// ticker := time.NewTicker(sleepDuration)
-			// defer ticker.Stop() // Ensure ticker stops even if the function exits early
-			// select {
-			// case <-ticker.C:
-			// 	continue // Proceed to the next iteration
-			// case <-ctx.Done():
-			// 	return "", ctx.Err() // Handle cancellation
-			// }
 		}
 	}
 }

@@ -2,19 +2,19 @@ package types
 
 type NodeConfig struct {
 	// used to set the logger level (true = info, false = debug)
-	Production                       bool   `yaml:"production"`
-	AVSOwnerAddress                  string `yaml:"avs_owner_address"`
-	OperatorAddress                  string `yaml:"operator_address"`
-	AVSAddress                       string `yaml:"avs_address"`
-	EthRpcUrl                        string `yaml:"eth_rpc_url"`
-	EthWsUrl                         string `yaml:"eth_ws_url"`
-	BlsPrivateKeyStorePath           string `yaml:"bls_private_key_store_path"`
-	OperatorEcdsaPrivateKeyStorePath string `yaml:"operator_ecdsa_private_key_store_path"`
-	AVSEcdsaPrivateKeyStorePath      string `yaml:"avs_ecdsa_private_key_store_path"`
-	RegisterOperatorOnStartup        bool   `yaml:"register_operator_on_startup"`
-	NodeApiIpPortAddress             string `yaml:"node_api_ip_port_address"`
-	EnableNodeApi                    bool   `yaml:"enable_node_api"`
-
+	Production                       bool     `yaml:"production"`
+	AVSOwnerAddress                  string   `yaml:"avs_owner_address"`
+	OperatorAddress                  string   `yaml:"operator_address"`
+	AVSAddress                       string   `yaml:"avs_address"`
+	EthRpcUrl                        string   `yaml:"eth_rpc_url"`
+	EthWsUrl                         string   `yaml:"eth_ws_url"`
+	BlsPrivateKeyStorePath           []string `yaml:"bls_private_key_store_path"`
+	OperatorEcdsaPrivateKeyStorePath string   `yaml:"operator_ecdsa_private_key_store_path"`
+	AVSEcdsaPrivateKeyStorePath      string   `yaml:"avs_ecdsa_private_key_store_path"`
+	RegisterOperatorOnStartup        bool     `yaml:"register_operator_on_startup"`
+	NodeApiIpPortAddress             string   `yaml:"node_api_ip_port_address"`
+	EnableNodeApi                    bool     `yaml:"enable_node_api"`
+	AVSAddresses                     []string `yaml:"avs_addresses"`
 	// register avs parameters
 	AvsName            string   `yaml:"avs_name"`
 	MinStakeAmount     uint64   `yaml:"min_stake_amount"`
@@ -32,7 +32,7 @@ type NodeConfig struct {
 	CreateTaskInterval    int64  `yaml:"create_task_interval"`
 	TaskResponsePeriod    uint64 `yaml:"task_response_period"`
 	TaskChallengePeriod   uint64 `yaml:"task_challenge_period"`
-	ThresholdPercentage   uint8  `yaml:"threshold_percentage"`
+	ThresholdPercentage   uint64 `yaml:"threshold_percentage"`
 	TaskStatisticalPeriod uint64 `yaml:"task_statistical_period"`
 	MiniOptInOperators    uint64 `yaml:"mini_opt_in_operators"`  // the minimum number of opt-in operators
 	MinTotalStakeAmount   uint64 `yaml:"min_total_stake_amount"` // the minimum total amount of stake by all operators

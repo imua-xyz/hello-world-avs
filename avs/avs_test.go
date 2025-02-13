@@ -12,7 +12,7 @@ import (
 func TestUpdateYAML(t *testing.T) {
 	// Example usage: update 'avs_address' field
 	expectedAddr := "0xce5b680d1fd259ada4820e9314bcf0723bdb0000"
-	filePath := "../config.yaml"
+	filePath := "../avs-avs-config2yaml"
 	key := "avs_address"
 	err := core.UpdateYAMLWithComments(filePath, key, expectedAddr)
 	if err != nil {

@@ -32,11 +32,6 @@ func PrintOperatorStatus(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
-	err = operator.PrintOperatorStatus()
-	if err != nil {
-		return err
-	}
-
+	
 	return nil
 }

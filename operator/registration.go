@@ -2,11 +2,8 @@ package operator
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"strings"
 )
 
 func (o *Operator) registerOperatorOnStartup() {
@@ -24,45 +21,36 @@ func (o *Operator) registerOperatorOnStartup() {
 	}
 }
 func (o *Operator) RegisterOperatorWithExocore() error {
-	flag, err := o.avsReader.IsOperator(&bind.CallOpts{}, o.operatorAddr.String())
-	if err != nil {
-		o.logger.Error("Cannot exec IsOperator", "err", err)
-		return err
-	}
-	if !flag {
-		o.logger.Info("Operator is not registered.")
-		panic(fmt.Sprintf("Operator is not registered: %s", o.operatorAddr.String()))
 
+	for _, avsReader := range o.avsReaders {
+		flag, err := avsReader.IsOperator(&bind.CallOpts{}, o.operatorAddr.String())
+		if err != nil {
+			o.logger.Error("Cannot exec IsOperator", "err", err)
+			return err
+		}
+		if !flag {
+			o.logger.Info("Operator is not registered.")
+			panic(fmt.Sprintf("Operator is not registered: %s", o.operatorAddr.String()))
+
+		}
+		if err != nil {
+			o.logger.Errorf("Error registering operator with exocore")
+			return err
+		}
 	}
-	if err != nil {
-		o.logger.Errorf("Error registering operator with exocore")
-		return err
-	}
+
 	return nil
 }
 
 // RegisterOperatorWithAvs Registration specific functions
 func (o *Operator) RegisterOperatorWithAvs() error {
-	operators, err := o.avsReader.GetOptInOperators(&bind.CallOpts{}, o.avsAddr.String())
-	if err != nil {
-		o.logger.Error("Cannot exec IsOperator", "err", err)
-		return err
-	}
-	str := strings.Join(operators, "")
-	config := sdk.GetConfig()
-	config.SetBech32PrefixForAccount("exo", "exopub")
-	var accAddr sdk.AccAddress = o.operatorAddr[:]
-	found := strings.Contains(str, accAddr.String())
-	if !found {
-		o.logger.Info("Operator is not opt-in this avs.")
-		_, err = o.avsWriter.RegisterOperatorToAVS(context.Background())
+	for _, avsWriter := range o.avsWriters {
+		_, err := avsWriter.RegisterOperatorToAVS(context.Background())
 		if err != nil {
 			o.logger.Error("Avs failed to RegisterOperatorToAVS", "err", err)
 			return err
 		}
 	}
-
-	o.logger.Info("Operator has opt-in this avs:", "avsAddr", o.avsAddr.String())
 
 	return nil
 }
@@ -74,20 +62,4 @@ type OperatorStatus struct {
 	Pubkey            string
 	// avs related
 	RegisteredWithAvs bool
-}
-
-func (o *Operator) PrintOperatorStatus() error {
-	o.logger.Info("Printing operator status")
-	operatorStatus := OperatorStatus{
-		EcdsaAddress:      o.operatorAddr.String(),
-		PubkeysRegistered: true,
-		Pubkey:            string(o.blsKeypair.PublicKey().Marshal()),
-		RegisteredWithAvs: false,
-	}
-	operatorStatusJson, err := json.MarshalIndent(operatorStatus, "", " ")
-	if err != nil {
-		return err
-	}
-	o.logger.Info(string(operatorStatusJson))
-	return nil
 }
