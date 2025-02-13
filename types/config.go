@@ -32,7 +32,7 @@ type NodeConfig struct {
 	CreateTaskInterval    int64  `yaml:"create_task_interval"`
 	TaskResponsePeriod    uint64 `yaml:"task_response_period"`
 	TaskChallengePeriod   uint64 `yaml:"task_challenge_period"`
-	ThresholdPercentage   uint64 `yaml:"threshold_percentage"`
+	ThresholdPercentage   uint8  `yaml:"threshold_percentage"`
 	TaskStatisticalPeriod uint64 `yaml:"task_statistical_period"`
 	MiniOptInOperators    uint64 `yaml:"mini_opt_in_operators"`  // the minimum number of opt-in operators
 	MinTotalStakeAmount   uint64 `yaml:"min_total_stake_amount"` // the minimum total amount of stake by all operators

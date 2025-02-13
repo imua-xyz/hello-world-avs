@@ -12,7 +12,7 @@ contract AvsServiceContract {
     // are signed by at least  ThresholdPercentage of the operators
     struct Task {
         string name;
-        uint256 taskId;
+        uint64 taskId;
         uint64 numberToBeSquared;
         uint64 taskResponsePeriod;
         uint64 taskChallengePeriod;
@@ -156,11 +156,10 @@ contract AvsServiceContract {
 
     function raiseAndResolveChallenge(
         address taskAddress,
-        uint64 taskID,
         Task memory task
     ) public returns (bool) {
         // some logical checks
-
+        uint64 taskID = task.taskId;
         avs.TaskInfo memory info = avs.AVSMANAGER_CONTRACT.getTaskInfo(
             taskAddress,
             taskID

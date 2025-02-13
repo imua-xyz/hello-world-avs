@@ -38,7 +38,7 @@ type ExoReader interface {
 		opts *bind.CallOpts,
 		avsAddress string,
 		taskID uint64,
-	) ([]uint64, error)
+	) (avs.TaskInfo, error)
 	IsOperator(
 		opts *bind.CallOpts,
 		operator string,
@@ -148,13 +148,13 @@ func (r *ExoChainReader) GetAVSEpochIdentifier(opts *bind.CallOpts, avsAddress s
 	}
 	return epochIdentifier, nil
 }
-func (r *ExoChainReader) GetTaskInfo(opts *bind.CallOpts, avsAddress string, taskID uint64) ([]uint64, error) {
+func (r *ExoChainReader) GetTaskInfo(opts *bind.CallOpts, avsAddress string, taskID uint64) (avs.TaskInfo, error) {
 	info, err := r.avsManager.GetTaskInfo(
 		opts,
 		gethcommon.HexToAddress(avsAddress), taskID)
 	if err != nil {
 		r.logger.Error("Failed to GetTaskInfo ", "err", err)
-		return nil, err
+		return avs.TaskInfo{}, err
 	}
 	return info, nil
 }

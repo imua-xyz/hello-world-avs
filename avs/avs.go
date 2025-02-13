@@ -35,7 +35,7 @@ type Avs struct {
 	createTaskInterval    int64
 	taskResponsePeriod    uint64
 	taskChallengePeriod   uint64
-	thresholdPercentage   uint64
+	thresholdPercentage   uint8
 	taskStatisticalPeriod uint64
 }
 

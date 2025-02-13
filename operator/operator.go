@@ -392,11 +392,11 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 	taskId uint64,
 	taskResponse []byte,
 	blsSignature []byte,
-	taskInfo []uint64) (string, error) {
+	taskInfo avs.TaskInfo) (string, error) {
 
-	startingEpoch := taskInfo[0]
-	taskResponsePeriod := taskInfo[1]
-	taskStatisticalPeriod := taskInfo[2]
+	startingEpoch := taskInfo.StartingEpoch
+	taskResponsePeriod := taskInfo.TaskResponsePeriod
+	taskStatisticalPeriod := taskInfo.TaskStatisticalPeriod
 
 	for {
 		select {
