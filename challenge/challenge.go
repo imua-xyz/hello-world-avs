@@ -16,11 +16,20 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"os"
+	"time"
 )
 
 const (
 	AvsName = "hello-world-avs-demo"
 	SemVer  = "0.0.1"
+	// DayEpochID defines the identifier for a daily epoch.
+	DayEpochID = "day"
+	// HourEpochID defines the identifier for an hourly epoch.
+	HourEpochID = "hour"
+	// MinuteEpochID defines the identifier for an epoch that is a minute long.
+	MinuteEpochID = "minute"
+	// WeekEpochID defines the identifier for a weekly epoch.
+	WeekEpochID = "week"
 )
 
 type Challenger struct {
@@ -140,7 +149,29 @@ func NewChallengeFromConfig(c types.NodeConfig) (*Challenger, error) {
 
 	return challenger, nil
 }
+func (o *Challenger) Exec(ctx context.Context) error {
+	taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), 1)
+	task := &avs.AvsServiceContractTask{
+		Name:                  taskInfo.Name,
+		TaskId:                taskInfo.TaskID,
+		NumberToBeSquared:     339,
+		TaskResponsePeriod:    taskInfo.TaskResponsePeriod,
+		TaskChallengePeriod:   taskInfo.TaskChallengePeriod,
+		ThresholdPercentage:   taskInfo.ThresholdPercentage,
+		TaskStatisticalPeriod: taskInfo.TaskStatisticalPeriod,
+	}
+	_, err := o.avsWriter.Challenge(
+		ctx,
+		"0x10Ed22D975453A5D4031440D51624552E4f204D5",
+		*task)
 
+	if err != nil {
+		o.logger.Error("Challeger failed to raiseAndResolveChallenge", "err", err)
+		return fmt.Errorf("failed to raiseAndResolveChallenge: %w", err)
+	}
+
+	return nil
+}
 func (o *Challenger) Start(ctx context.Context) error {
 	// 1. First, the task reaches the challenge period and the module is verified
 	// 2. Is an effective task:
@@ -232,7 +263,11 @@ func (o *Challenger) GetLog(height int64) error {
 			if eventArgs != nil {
 				task := o.ProcessNewTaskCreatedLog(eventArgs)
 
-				taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), task.TaskId)
+				taskInfo, err := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), task.TaskId)
+				if err != nil {
+					o.logger.Error("Failed to GetTaskInfo", "err", err)
+					return err
+				}
 				go func() {
 					_, err := o.TriggerChallege(context.Background(), *task, taskInfo)
 					if err != nil {
@@ -255,13 +290,13 @@ func (o *Challenger) ProcessNewTaskCreatedLog(eventArgs []interface{}) *avs.AvsS
 	)
 
 	task := &avs.AvsServiceContractTask{
-		Name:                  eventArgs[0].(string),
-		TaskId:                eventArgs[1].(uint64),
-		NumberToBeSquared:     eventArgs[1].(uint64),
-		TaskResponsePeriod:    eventArgs[1].(uint64),
-		TaskChallengePeriod:   eventArgs[1].(uint64),
-		ThresholdPercentage:   eventArgs[1].(uint64),
-		TaskStatisticalPeriod: eventArgs[1].(uint64),
+		Name:                  eventArgs[2].(string),
+		TaskId:                eventArgs[0].(*big.Int).Uint64(),
+		NumberToBeSquared:     eventArgs[3].(uint64),
+		TaskResponsePeriod:    eventArgs[4].(uint64),
+		TaskChallengePeriod:   eventArgs[5].(uint64),
+		ThresholdPercentage:   eventArgs[6].(uint8),
+		TaskStatisticalPeriod: eventArgs[7].(uint64),
 	}
 	return task
 }
@@ -270,10 +305,38 @@ func (o *Challenger) TriggerChallege(
 	ctx context.Context,
 	task avs.AvsServiceContractTask,
 	taskInfo avs.TaskInfo) (string, error) {
-
+	o.logger.Debug("TriggerChallege", "taskInfo", taskInfo)
+	epochIdentifier, err := o.avsReader.GetAVSEpochIdentifier(&bind.CallOpts{}, o.avsAddr.String())
 	startingEpoch := taskInfo.StartingEpoch
 	taskResponsePeriod := taskInfo.TaskResponsePeriod
 	taskStatisticalPeriod := taskInfo.TaskStatisticalPeriod
+	num := startingEpoch + taskResponsePeriod + taskStatisticalPeriod
+
+	var sleepDuration time.Duration
+	switch epochIdentifier {
+	case DayEpochID:
+		sleepDuration = time.Duration(num) * 24 * time.Hour
+	case HourEpochID:
+		sleepDuration = time.Duration(num) * time.Hour
+	case MinuteEpochID:
+		sleepDuration = time.Duration(num) * time.Minute
+	case WeekEpochID:
+		sleepDuration = time.Duration(num) * 7 * 24 * time.Hour
+	default:
+		o.logger.Info("Unknown epoch identifier", "epochIdentifier", epochIdentifier)
+		sleepDuration = time.Minute // Default to a safe short duration
+	}
+
+	time.Sleep(sleepDuration)
+
+	if taskInfo.IsExpected {
+		o.logger.Infof("Task %d is expected. Skipping challenge", task.TaskId)
+		return "", nil
+	}
+	if len(taskInfo.OptInOperators) < 1 {
+		o.logger.Infof("Task %d does not have any optIn operators. Skipping challenge", task.TaskId)
+		return "", nil
+	}
 
 	for {
 		select {
@@ -281,7 +344,6 @@ func (o *Challenger) TriggerChallege(
 			return "", ctx.Err() // Gracefully exit if context is canceled
 		default:
 			// Fetch the current epoch information
-			epochIdentifier, err := o.avsReader.GetAVSEpochIdentifier(&bind.CallOpts{}, o.avsAddr.String())
 			if err != nil {
 				o.logger.Error("Cannot GetAVSEpochIdentifier", "err", err)
 				return "", fmt.Errorf("failed to get AVS info: %w", err) // Stop on persistent error

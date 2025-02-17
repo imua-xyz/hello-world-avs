@@ -51,7 +51,7 @@ func challengeMain(ctx *cli.Context) error {
 	log.Println("initialized challenge")
 
 	log.Println("starting challenge")
-	err = operator.Start(context.Background())
+	err = operator.Exec(context.Background())
 	if err != nil {
 		return err
 	}

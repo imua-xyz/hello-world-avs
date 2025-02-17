@@ -8,6 +8,7 @@ GOGET=$(GOCMD) get
 # Binary names
 AVS_BINARY=avsbinary
 OPERATOR_BINARY=operatorbinary
+CHALLENGE_BINARY=challengebinary
 EXOKEY_BINARY=exokey
 
 # Go version
@@ -20,7 +21,7 @@ LDFLAGS=-ldflags "-s -w"
 all: clean build
 
 # Build all binaries
-build: avs operator exokey
+build: avs operator exokey challenge
 
 # AVS build
 avs:
@@ -29,6 +30,10 @@ avs:
 # Operator build
 operator:
 	$(GOBUILD) $(LDFLAGS) -o $(OPERATOR_BINARY) operator/cmd/main.go
+
+# challenge build
+challenge:
+	$(GOBUILD) $(LDFLAGS) -o $(CHALLENGE_BINARY) challenge/cmd/main.go
 
 # ExoKey build
 exokey:
@@ -64,4 +69,4 @@ import-key:
 	./$(EXOKEY_BINARY) import --key-type ecdsa $(PRI_KEY)
 
 # Phony targets
-.PHONY: all build avs operator exokey clean test deps lint build-linux build-darwin import-key
+.PHONY: all build avs operator exokey clean test deps lint build-linux build-darwin import-key challenge

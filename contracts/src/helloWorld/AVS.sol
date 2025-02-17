@@ -4,6 +4,7 @@ contract AvsServiceContract {
     address public owner;
     mapping(bytes32 => bool) public processedTasks;
     event TaskResolved(uint64 taskId, bool isExpected);
+    mapping(address => avs.TaskResultInfo) public taskResultsMap;
 
     // task submitter decides on the criteria for a task to be completed
     // note that this does not mean the task was "correctly" answered (i.e. the number was squared correctly)
@@ -16,7 +17,7 @@ contract AvsServiceContract {
         uint64 numberToBeSquared;
         uint64 taskResponsePeriod;
         uint64 taskChallengePeriod;
-        uint64 thresholdPercentage;
+        uint8 thresholdPercentage;
         uint64 taskStatisticalPeriod;
     }
 
@@ -35,7 +36,7 @@ contract AvsServiceContract {
         uint64 numberToBeSquared,
         uint64 taskResponsePeriod,
         uint64 taskChallengePeriod,
-        uint64 thresholdPercentage,
+        uint8 thresholdPercentage,
         uint64 taskStatisticalPeriod
     );
 
@@ -164,13 +165,20 @@ contract AvsServiceContract {
             taskAddress,
             taskID
         );
-        bytes[] memory taskResponse =avs.AVSMANAGER_CONTRACT.getOperatorTaskResponse(
+        avs.TaskResultInfo[] memory taskResponse =avs.AVSMANAGER_CONTRACT.getOperatorTaskResponseList(
             taskAddress,
-            taskID
+            taskID,
+            info.optInOperators
         );
+        require(taskResponse.length>0, "taskResponse length must be greater than 0");
+
+        for (uint i = 0; i < taskResponse.length; i++) {
+            taskResultsMap[taskResponse[i].operatorAddress] = taskResponse[i];
+        }
+
         require(compareBytes(info.hash , abi.encodePacked(keccak256(abi.encode(task)))), "Task is not equal.");
         require(info.isExpected == false, "Task already completed.");
-        bytes32 key = getCompositeKey(info.taskContractAddress, info.taskId);
+        bytes32 key = getCompositeKey(info.taskContractAddress, info.taskID);
 
         require(!processedTasks[key],  "Task already processed");
         require(info.optInOperators.length > 0, "No opted-in operators");
@@ -186,7 +194,7 @@ contract AvsServiceContract {
         for (uint256 i = 0; i < info.optInOperators.length; i++) {
             address operator = info.optInOperators[i];
 
-            TaskResponse memory res = decodeTaskRes(taskResponse[i]);
+            TaskResponse memory res = decodeTaskRes(taskResultsMap[operator].taskResponse);
             bool isValid = (actualSquaredOutput == res.numberSquared);
 
             uint256 power = findOperatorPower(info.operatorActivePower, operator);
@@ -198,19 +206,34 @@ contract AvsServiceContract {
                 tempSlash[slashCount++] = info.optInOperators[i];
             }
         }
-        info.eligibleRewardOperators = tempReward;
-        info.eligibleSlashOperators = tempSlash;
+
+
         uint256 approvalRate = (totalApprovedPower * 100) / totalPower;
-        info.isExpected = approvalRate >= info.thresholdPercentage;
-        info.thresholdPercentage = uint8(approvalRate);
         processedTasks[key] = true;
-        emit TaskResolved(info.taskId, info.isExpected);
-        bool success  = avs.AVSMANAGER_CONTRACT.challenge(
-            msg.sender,
-            info
-        );
-        return success;
+        emit TaskResolved(info.taskID, info.isExpected);
+        if (approvalRate >= info.thresholdPercentage){
+            return avs.AVSMANAGER_CONTRACT.challenge(
+                msg.sender,
+                info.taskID,
+                info.taskContractAddress,
+                uint8(approvalRate),
+                true,
+                tempReward,
+                tempSlash
+            );
+        }else{
+            return avs.AVSMANAGER_CONTRACT.challenge(
+                msg.sender,
+                info.taskID,
+                info.taskContractAddress,
+                uint8(approvalRate),
+                false,
+                tempReward,
+                tempSlash
+            );
+        }
     }
+
 
     function decodeTaskRes(bytes memory encodedData) public pure returns (TaskResponse memory) {
         (uint64 numberSquared, uint64 taskId) = abi.decode(encodedData, (uint64, uint64));
@@ -265,12 +288,11 @@ contract AvsServiceContract {
         return result;
     }
     //query
-    function getOptInOperators(address avsAddress) public view returns (string[] memory) {
-        string[] memory data = avs.AVSMANAGER_CONTRACT.getOptInOperators(
+    function getOptInOperators(address avsAddress) public view returns (address[] memory) {
+        return avs.AVSMANAGER_CONTRACT.getOptInOperators(
             avsAddress
         );
 
-        return data;
     }
 
 

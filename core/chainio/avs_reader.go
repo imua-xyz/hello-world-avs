@@ -13,7 +13,7 @@ type ExoReader interface {
 	GetOptInOperators(
 		opts *bind.CallOpts,
 		avsAddress string,
-	) ([]string, error)
+	) ([]gethcommon.Address, error)
 
 	GetRegisteredPubkey(
 		opts *bind.CallOpts,
@@ -94,7 +94,7 @@ func BuildExoChainReader(
 func (r *ExoChainReader) GetOptInOperators(
 	opts *bind.CallOpts,
 	avsAddress string,
-) ([]string, error) {
+) ([]gethcommon.Address, error) {
 	operators, err := r.avsManager.GetOptInOperators(
 		opts,
 		gethcommon.HexToAddress(avsAddress))
