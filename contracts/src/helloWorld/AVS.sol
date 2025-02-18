@@ -2,9 +2,7 @@ pragma solidity >=0.8.17;
 import "./IAVSManager.sol" as avs;
 contract AvsServiceContract {
     address public owner;
-    mapping(bytes32 => bool) public processedTasks;
-    event TaskResolved(uint64 taskId, bool isExpected);
-    mapping(address => avs.TaskResultInfo) public taskResultsMap;
+    event TaskResolved(uint64 taskId, address taskAddress);
 
     // task submitter decides on the criteria for a task to be completed
     // note that this does not mean the task was "correctly" answered (i.e. the number was squared correctly)
@@ -39,6 +37,15 @@ contract AvsServiceContract {
         uint8 thresholdPercentage,
         uint64 taskStatisticalPeriod
     );
+    struct ChallengeReq {
+        uint64 taskId;
+        address taskAddress;
+        uint64 numberToBeSquared;
+        avs.OperatorResInfo[]  infos;
+        address[]  signedOperators ;
+        address[]  noSignedOperators;
+        string  taskTotalPower;
+    }
 
     constructor() {
         owner = msg.sender;
@@ -156,84 +163,77 @@ contract AvsServiceContract {
     }
 
     function raiseAndResolveChallenge(
-        address taskAddress,
-        Task memory task
+        ChallengeReq memory req
     ) public returns (bool) {
-        // some logical checks
-        uint64 taskID = task.taskId;
-        avs.TaskInfo memory info = avs.AVSMANAGER_CONTRACT.getTaskInfo(
-            taskAddress,
-            taskID
-        );
-        avs.TaskResultInfo[] memory taskResponse =avs.AVSMANAGER_CONTRACT.getOperatorTaskResponseList(
-            taskAddress,
-            taskID,
-            info.optInOperators
-        );
-        require(taskResponse.length>0, "taskResponse length must be greater than 0");
-
-        for (uint i = 0; i < taskResponse.length; i++) {
-            taskResultsMap[taskResponse[i].operatorAddress] = taskResponse[i];
-        }
-
-        require(compareBytes(info.hash , abi.encodePacked(keccak256(abi.encode(task)))), "Task is not equal.");
-        require(info.isExpected == false, "Task already completed.");
-        bytes32 key = getCompositeKey(info.taskContractAddress, info.taskID);
-
-        require(!processedTasks[key],  "Task already processed");
-        require(info.optInOperators.length > 0, "No opted-in operators");
-
+        
+        uint64 taskID = req.taskId;
+        require(req.infos.length>0, "taskResponse length must be greater than 0");
         uint256 totalApprovedPower;
-        uint256 totalPower = stringToUint(info.taskTotalPower);
-        address[] memory tempReward = new address[](info.optInOperators.length);
-        address[] memory tempSlash = new address[](info.optInOperators.length);
-        uint256 rewardCount;
-        uint256 slashCount;
-        uint64 actualSquaredOutput = task.numberToBeSquared * task.numberToBeSquared;
+        uint256 totalPower = stringToUint(req.taskTotalPower);
+        address[] memory tempReward = new address[](req.signedOperators.length);
+        address[] memory tempSlash = new address[](req.signedOperators.length+req.noSignedOperators.length);
+        uint256 rewardCount=0;
+        uint256 slashCount=0;
+        uint64 actualSquaredOutput = req.numberToBeSquared * req.numberToBeSquared;
 
-        for (uint256 i = 0; i < info.optInOperators.length; i++) {
-            address operator = info.optInOperators[i];
-
-            TaskResponse memory res = decodeTaskRes(taskResultsMap[operator].taskResponse);
+        for (uint256 i = 0; i <req.infos.length; i++) {
+            address operator = req.infos[i].operatorAddress;
+            TaskResponse memory res = decodeTaskRes(req.infos[i].taskResponse);
             bool isValid = (actualSquaredOutput == res.numberSquared);
-
-            uint256 power = findOperatorPower(info.operatorActivePower, operator);
-
             if (isValid) {
-                tempReward[rewardCount++] = info.optInOperators[i];
-                totalApprovedPower += power;
+                tempReward[rewardCount++] = operator;
+                totalApprovedPower += req.infos[i].power;
             } else {
-                tempSlash[slashCount++] = info.optInOperators[i];
+                tempSlash[slashCount++] = operator;
             }
         }
-
+        mergeArrays(tempSlash,req.noSignedOperators);
 
         uint256 approvalRate = (totalApprovedPower * 100) / totalPower;
-        processedTasks[key] = true;
-        emit TaskResolved(info.taskID, info.isExpected);
-        if (approvalRate >= info.thresholdPercentage){
-            return avs.AVSMANAGER_CONTRACT.challenge(
-                msg.sender,
-                info.taskID,
-                info.taskContractAddress,
-                uint8(approvalRate),
-                true,
-                tempReward,
-                tempSlash
-            );
-        }else{
-            return avs.AVSMANAGER_CONTRACT.challenge(
-                msg.sender,
-                info.taskID,
-                info.taskContractAddress,
-                uint8(approvalRate),
-                false,
-                tempReward,
-                tempSlash
-            );
-        }
+        emit TaskResolved(taskID, req.taskAddress);
+
+        return avs.AVSMANAGER_CONTRACT.challenge(
+            msg.sender,
+            taskID,
+            req.taskAddress,
+            uint8(approvalRate),
+            true,
+            tempReward,
+            tempSlash);
+    }
+    // Serialize TaskResponse struct to bytes
+    function serializeTaskResponse(TaskResponse memory response) public pure returns (bytes memory) {
+        return abi.encode(response.taskID, response.numberSquared);
     }
 
+    // Deserialize bytes to TaskResponse struct
+    function deserializeTaskResponse(bytes memory data) public pure returns (TaskResponse memory) {
+        uint64 taskID;
+        uint64 numberSquared;
+        (taskID, numberSquared) = abi.decode(data, (uint64, uint64));
+
+        return TaskResponse(taskID, numberSquared);
+    }
+    function mergeArrays(address[] memory arr1, address[] memory arr2) public pure returns (address[] memory) {
+        uint256 totalLength = arr1.length + arr2.length;
+        address[] memory mergedArray = new address[](totalLength);
+
+        uint256 index = 0;
+
+        // 将第一个数组的元素添加到合并后的数组中
+        for (uint256 i = 0; i < arr1.length; i++) {
+            mergedArray[index] = arr1[i];
+            index++;
+        }
+
+        // 将第二个数组的元素添加到合并后的数组中
+        for (uint256 i = 0; i < arr2.length; i++) {
+            mergedArray[index] = arr2[i];
+            index++;
+        }
+
+        return mergedArray;
+    }
 
     function decodeTaskRes(bytes memory encodedData) public pure returns (TaskResponse memory) {
         (uint64 numberSquared, uint64 taskId) = abi.decode(encodedData, (uint64, uint64));
@@ -241,41 +241,7 @@ contract AvsServiceContract {
         return TaskResponse(numberSquared, taskId);
     }
 
-    function compareBytes(bytes memory a, bytes memory b) public pure returns (bool) {
-        if (a.length != b.length) {
-            return false;
-        }
 
-        for (uint i = 0; i < a.length; i++) {
-            if (a[i] != b[i]) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    function findOperatorPower(
-        avs.OperatorActivePower[] memory powers,
-        address operator
-    ) internal pure returns (uint256) {
-        for (uint256 i = 0; i < powers.length; i++) {
-            if (powers[i].operator == operator) {
-                return powers[i].power;
-            }
-        }
-        revert("Operator power not found");
-    }
-    function getCompositeKey(
-        address operator,
-        uint64 taskId
-    ) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(
-            bytes1(0xff), // 防碰撞前缀
-            operator,
-            bytes32(uint256(taskId))
-        ));
-    }
     function stringToUint(string memory s) internal pure returns (uint256) {
         bytes memory b = bytes(s);
         uint256 result = 0;
@@ -347,5 +313,32 @@ contract AvsServiceContract {
             epochIdentifier
         );
         return currentEpoch;
+    }
+
+
+    function getChallengeInfo(address taskAddress, uint64 taskID)  public view returns (address challenger) {
+
+        return avs.AVSMANAGER_CONTRACT.getChallengeInfo(
+            taskAddress,
+            taskID
+        );
+    }
+
+
+    function getOperatorTaskResponse(address taskAddress, address operator, uint64 taskID) public view returns (avs.TaskResultInfo memory taskResultInfo) {
+
+        return avs.AVSMANAGER_CONTRACT.getOperatorTaskResponse(
+            taskAddress,
+            operator,
+            taskID
+        );
+    }
+
+    function getOperatorTaskResponseList(address taskAddress, uint64 taskID) public view returns (avs.OperatorResInfo[] memory operatorResInfo) {
+
+        return avs.AVSMANAGER_CONTRACT.getOperatorTaskResponseList(
+            taskAddress,
+            taskID
+        );
     }
 }

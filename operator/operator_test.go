@@ -4,14 +4,45 @@ import (
 	"context"
 	"fmt"
 	avs "github.com/ExocoreNetwork/exocore-avs/contracts/bindings/avs"
+	"github.com/ExocoreNetwork/exocore-avs/core"
 	"github.com/ExocoreNetwork/exocore-avs/core/chainio/eth"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"log"
 	"math/big"
 	"testing"
 	"time"
 )
+
+func TestAbi(t *testing.T) {
+
+	task := core.TaskResponse{
+		TaskID:        10,
+		NumberSquared: 56169,
+	}
+
+	packed, err := core.Args.Pack(&task)
+	if err != nil {
+		t.Errorf("Error packing task: %v", err)
+		return
+	} else {
+		t.Logf("ABI encoded: %s", hexutil.Encode(packed))
+	}
+
+	args := make(map[string]interface{})
+
+	err = core.Args.UnpackIntoMap(args, packed)
+	result, _ := core.Args.Unpack(packed)
+	t.Logf("Unpacked: %v", result[0])
+	hash := crypto.Keccak256Hash(packed)
+	t.Logf("Hash: %s", hash.String())
+
+	key := args["TaskResponse"]
+	t.Logf("Key: %v", key)
+
+}
 
 // doc：https://docs.infura.io/api/networks/ethereum/json-rpc-methods/eth_getlogs
 func TestEth_getlogs(t *testing.T) {

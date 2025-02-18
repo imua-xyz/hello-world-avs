@@ -151,18 +151,19 @@ func NewChallengeFromConfig(c types.NodeConfig) (*Challenger, error) {
 }
 func (o *Challenger) Exec(ctx context.Context) error {
 	taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), 1)
-	task := &avs.AvsServiceContractTask{
-		Name:                  taskInfo.Name,
-		TaskId:                taskInfo.TaskID,
-		NumberToBeSquared:     339,
-		TaskResponsePeriod:    taskInfo.TaskResponsePeriod,
-		TaskChallengePeriod:   taskInfo.TaskChallengePeriod,
-		ThresholdPercentage:   taskInfo.ThresholdPercentage,
-		TaskStatisticalPeriod: taskInfo.TaskStatisticalPeriod,
+	infos, _ := o.avsReader.GetOperatorTaskResponseList(&bind.CallOpts{}, taskInfo.TaskContractAddress.String(), taskInfo.TaskID)
+	task := &avs.AvsServiceContractChallengeReq{
+		TaskId:            taskInfo.TaskID,
+		TaskAddress:       taskInfo.TaskContractAddress,
+		NumberToBeSquared: 350,
+		Infos:             infos,
+		SignedOperators:   taskInfo.SignedOperators,
+		NoSignedOperators: taskInfo.NoSignedOperators,
+		TaskTotalPower:    taskInfo.TaskTotalPower,
 	}
+	o.logger.Info("challenger info", "challenge-TaskResponse", infos[0].TaskResponse)
 	_, err := o.avsWriter.Challenge(
 		ctx,
-		"0x10Ed22D975453A5D4031440D51624552E4f204D5",
 		*task)
 
 	if err != nil {
@@ -281,7 +282,7 @@ func (o *Challenger) GetLog(height int64) error {
 }
 
 // ProcessNewTaskCreatedLog TaskResponse is the struct that is signed and sent to the exocore as a task response.
-func (o *Challenger) ProcessNewTaskCreatedLog(eventArgs []interface{}) *avs.AvsServiceContractTask {
+func (o *Challenger) ProcessNewTaskCreatedLog(eventArgs []interface{}) *avs.AvsServiceContractChallengeReq {
 	o.logger.Debug("Received new task", "task", eventArgs)
 	o.logger.Info("Received new task",
 		"id", eventArgs[0].(*big.Int),
@@ -289,21 +290,16 @@ func (o *Challenger) ProcessNewTaskCreatedLog(eventArgs []interface{}) *avs.AvsS
 		"numberToBeSquared", eventArgs[3].(uint64),
 	)
 
-	task := &avs.AvsServiceContractTask{
-		Name:                  eventArgs[2].(string),
-		TaskId:                eventArgs[0].(*big.Int).Uint64(),
-		NumberToBeSquared:     eventArgs[3].(uint64),
-		TaskResponsePeriod:    eventArgs[4].(uint64),
-		TaskChallengePeriod:   eventArgs[5].(uint64),
-		ThresholdPercentage:   eventArgs[6].(uint8),
-		TaskStatisticalPeriod: eventArgs[7].(uint64),
+	task := &avs.AvsServiceContractChallengeReq{
+		TaskId:            eventArgs[0].(*big.Int).Uint64(),
+		NumberToBeSquared: eventArgs[3].(uint64),
 	}
 	return task
 }
 
 func (o *Challenger) TriggerChallege(
 	ctx context.Context,
-	task avs.AvsServiceContractTask,
+	task avs.AvsServiceContractChallengeReq,
 	taskInfo avs.TaskInfo) (string, error) {
 	o.logger.Debug("TriggerChallege", "taskInfo", taskInfo)
 	epochIdentifier, err := o.avsReader.GetAVSEpochIdentifier(&bind.CallOpts{}, o.avsAddr.String())
@@ -362,7 +358,6 @@ func (o *Challenger) TriggerChallege(
 					"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod, "taskStatisticalPeriod", taskStatisticalPeriod)
 				_, err := o.avsWriter.Challenge(
 					ctx,
-					taskInfo.TaskContractAddress.String(),
 					task)
 				if err != nil {
 					o.logger.Error("Challeger failed to raiseAndResolveChallenge", "err", err)

@@ -48,6 +48,22 @@ type ExoReader interface {
 		opts *bind.CallOpts,
 		epochIdentifier string,
 	) (int64, error)
+	GetChallengeInfo(
+		opts *bind.CallOpts,
+		taskAddress string,
+		taskID uint64,
+	) (gethcommon.Address, error)
+	GetOperatorTaskResponse(
+		opts *bind.CallOpts,
+		taskAddress string,
+		operatorAddress string,
+		taskID uint64,
+	) (avs.TaskResultInfo, error)
+	GetOperatorTaskResponseList(
+		opts *bind.CallOpts,
+		taskAddress string,
+		taskID uint64,
+	) ([]avs.OperatorResInfo, error)
 }
 
 type ExoChainReader struct {
@@ -178,4 +194,40 @@ func (r *ExoChainReader) GetCurrentEpoch(opts *bind.CallOpts, epochIdentifier st
 		return 0, err
 	}
 	return currentEpoch, nil
+}
+func (r *ExoChainReader) GetChallengeInfo(opts *bind.CallOpts, taskAddress string, taskID uint64) (gethcommon.Address, error) {
+	address, err := r.avsManager.GetChallengeInfo(
+		opts,
+		gethcommon.HexToAddress(taskAddress),
+		taskID)
+	if err != nil {
+		r.logger.Error("Failed to exec IsOperator ", "err", err)
+		return gethcommon.Address{}, err
+	}
+	return address, nil
+}
+
+func (r *ExoChainReader) GetOperatorTaskResponse(opts *bind.CallOpts, taskAddress string, operatorAddress string, taskID uint64) (avs.TaskResultInfo, error) {
+	res, err := r.avsManager.GetOperatorTaskResponse(
+		opts,
+		gethcommon.HexToAddress(taskAddress),
+		gethcommon.HexToAddress(operatorAddress),
+		taskID)
+	if err != nil {
+		r.logger.Error("Failed to exec IsOperator ", "err", err)
+		return avs.TaskResultInfo{}, err
+	}
+	return res, nil
+}
+
+func (r *ExoChainReader) GetOperatorTaskResponseList(opts *bind.CallOpts, taskAddress string, taskID uint64) ([]avs.OperatorResInfo, error) {
+	res, err := r.avsManager.GetOperatorTaskResponseList(
+		opts,
+		gethcommon.HexToAddress(taskAddress),
+		taskID)
+	if err != nil {
+		r.logger.Error("Failed to exec IsOperator ", "err", err)
+		return []avs.OperatorResInfo{}, err
+	}
+	return res, nil
 }

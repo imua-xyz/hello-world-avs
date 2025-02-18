@@ -4,16 +4,72 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"gopkg.in/yaml.v3"
+	"math/big"
 	"os"
 	"path/filepath"
 )
 
+var (
+	taskResponseType, _ = abi.NewType("tuple", "struct", []abi.ArgumentMarshaling{
+		{Name: "TaskID", Type: "uint64"},
+		{Name: "NumberSquared", Type: "uint64"},
+	})
+
+	Args = abi.Arguments{
+		{Type: taskResponseType, Name: "TaskResponse"},
+	}
+)
+
 type TaskResponse struct {
-	TaskID            uint64
-	NumberToBeSquared uint64
+	TaskID        uint64
+	NumberSquared uint64
+}
+
+func AbiEncode(resp TaskResponse) ([]byte, error) {
+
+	abiArgs := abi.Arguments{
+		{Name: "taskID", Type: mustNewType("uint64")},
+		{Name: "numberSquared", Type: mustNewType("uint64")},
+	}
+
+	taskID := new(big.Int).SetUint64(resp.TaskID)
+	numSquared := new(big.Int).SetUint64(resp.NumberSquared)
+
+	return abiArgs.Pack(taskID, numSquared)
+}
+
+func AbiDecode(data []byte) (TaskResponse, error) {
+	abiArgs := abi.Arguments{
+		{Name: "taskID", Type: mustNewType("uint64")},
+		{Name: "numberSquared", Type: mustNewType("uint64")},
+	}
+
+	values, err := abiArgs.UnpackValues(data)
+	if err != nil {
+		return TaskResponse{}, err
+	}
+
+	var (
+		taskID, _    = values[0].(*big.Int)
+		numSquare, _ = values[1].(*big.Int)
+	)
+
+	return TaskResponse{
+		TaskID:        taskID.Uint64(),
+		NumberSquared: numSquare.Uint64(),
+	}, nil
+}
+
+func mustNewType(typeStr string) abi.Type {
+	t, err := abi.NewType(typeStr, "", nil)
+	if err != nil {
+		panic(err)
+	}
+	return t
 }
 
 // MarshalTaskResponse GetTaskResponseDigestEncodeByjson returns the hash of the TaskResponse, which is what operators sign over
@@ -38,7 +94,14 @@ func GetTaskResponseDigestEncodeByjson(h TaskResponse) ([32]byte, []byte, error)
 	taskResponseDigest := crypto.Keccak256Hash(jsonData)
 	return taskResponseDigest, jsonData, nil
 }
-
+func GetTaskResponseDigestEncodeByAbi(h TaskResponse) ([32]byte, []byte, error) {
+	packed, err := Args.Pack(h)
+	if err != nil {
+		return [32]byte{}, []byte{}, err
+	}
+	taskResponseDigest := crypto.Keccak256Hash(packed)
+	return taskResponseDigest, packed, nil
+}
 func UpdateYAMLWithComments(filePath, key, newValue string) error {
 	if newValue == "" {
 		panic("param is nil")

@@ -49,8 +49,7 @@ type ExoWriter interface {
 
 	Challenge(
 		ctx context.Context,
-		taskContractAddress string,
-		params avs.AvsServiceContractTask,
+		req avs.AvsServiceContractChallengeReq,
 	) (*gethtypes.Receipt, error)
 
 	RegisterOperatorToAVS(
@@ -226,15 +225,14 @@ func (w *ExoChainWriter) OperatorSubmitTask(
 
 	return receipt, nil
 }
-func (w *ExoChainWriter) Challenge(ctx context.Context, taskContractAddress string, params avs.AvsServiceContractTask) (*gethtypes.Receipt, error) {
+func (w *ExoChainWriter) Challenge(ctx context.Context, req avs.AvsServiceContractChallengeReq) (*gethtypes.Receipt, error) {
 	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()
 	if err != nil {
 		return nil, err
 	}
 	tx, err := w.avsManager.RaiseAndResolveChallenge(
 		noSendTxOpts,
-		gethcommon.HexToAddress(taskContractAddress),
-		params)
+		req)
 	if err != nil {
 		return nil, err
 	}

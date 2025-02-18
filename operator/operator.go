@@ -367,15 +367,15 @@ func (o *Operator) ProcessNewTaskCreatedLog(eventArgs []interface{}) *core.TaskR
 	taskId := eventArgs[0].(*big.Int)
 	numberToBeSquared := eventArgs[3].(uint64)
 	taskResponse := &core.TaskResponse{
-		TaskID:            taskId.Uint64(),
-		NumberToBeSquared: numberToBeSquared * numberToBeSquared,
+		TaskID:        taskId.Uint64(),
+		NumberSquared: numberToBeSquared * numberToBeSquared,
 	}
 	return taskResponse
 }
 
 func (o *Operator) SignTaskResponse(taskResponse *core.TaskResponse) ([]byte, []byte, error) {
 
-	taskResponseHash, data, err := core.GetTaskResponseDigestEncodeByjson(*taskResponse)
+	taskResponseHash, data, err := core.GetTaskResponseDigestEncodeByAbi(*taskResponse)
 	if err != nil {
 		o.logger.Error("Error SignTaskResponse with getting task response header hash. skipping task (this is not expected and should be investigated)", "err", err)
 		return nil, nil, err
@@ -417,7 +417,7 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 			}
 
 			currentEpoch := uint64(num)
-			o.logger.Info("current epoch  is :", "currentEpoch", currentEpoch)
+			// o.logger.Info("current epoch  is :", "currentEpoch", currentEpoch)
 			if currentEpoch > startingEpoch+taskResponsePeriod+taskStatisticalPeriod {
 				o.logger.Info("Exiting loop: Task period has passed")
 				return "Task period has passed", nil
@@ -425,7 +425,7 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 
 			switch {
 			case currentEpoch <= startingEpoch:
-				o.logger.Info("current epoch  is less than starting epoch", "currentEpoch", currentEpoch, "startingEpoch", startingEpoch)
+				// o.logger.Info("current epoch  is less than starting epoch", "currentEpoch", currentEpoch, "startingEpoch", startingEpoch)
 
 			case currentEpoch <= startingEpoch+taskResponsePeriod:
 				o.logger.Info("Execute Phase One Submission Task", "currentEpoch", currentEpoch,

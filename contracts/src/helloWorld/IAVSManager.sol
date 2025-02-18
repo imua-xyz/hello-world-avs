@@ -86,6 +86,17 @@ IAVSManager constant AVSMANAGER_CONTRACT = IAVSManager(AVSMANAGER_PRECOMPILE_ADD
         uint8 phase;
     }
 
+    struct OperatorResInfo {
+        address taskContractAddress;
+        uint64 taskID;
+        address operatorAddress;
+        string taskResponseHash;
+        bytes taskResponse;
+        bytes blsSignature;
+        uint256 power;
+        uint8 phase;
+    }
+
 interface IAVSManager {
     // note:string and bytes will be hashed. address / uintX will not be hashed when using indexed.
     event AVSRegistered(address indexed avsAddress, address sender, string avsName);
@@ -174,7 +185,7 @@ interface IAVSManager {
         address sender,
         uint64 taskID,
         address taskContractAddress,
-        uint8  actualThreshold,
+        uint8 actualThreshold,
         bool isExpected,
         address[] calldata eligibleRewardOperators,
         address[] calldata eligibleSlashOperators
@@ -259,11 +270,10 @@ interface IAVSManager {
     /// @dev getOperatorTaskResponseList  is a function to query task result which operator submit.
     /// @param taskAddress The address of the avs task
     /// @param taskID The id of task.
-    /// @param operators The list address of the operator
-    function getOperatorTaskResponseList(address taskAddress, uint64 taskID, address[] calldata operators)
+    function getOperatorTaskResponseList(address taskAddress, uint64 taskID)
     external
     view
-    returns (TaskResultInfo[] memory taskResultInfo);
+    returns (OperatorResInfo[] memory operatorResInfo);
 
     /// @dev getOperatorTaskResponse  is a function to query task result which operator submit.
     /// @param taskAddress The address of the avs task

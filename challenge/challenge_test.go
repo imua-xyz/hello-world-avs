@@ -17,7 +17,7 @@ func TestEth_getlogs(t *testing.T) {
 		log.Fatal("Cannot create http ethclient", "err", err)
 	}
 	// Contract address and ABI
-	contractAddress := common.HexToAddress("0xaD6864A88b832100750Ff35881851c943e5BAc34")
+	_ = common.HexToAddress("0xaD6864A88b832100750Ff35881851c943e5BAc34")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -26,8 +26,6 @@ func TestEth_getlogs(t *testing.T) {
 		log.Fatal(err)
 	}
 	firstHeight, err := ethRpcClient.BlockNumber(context.Background())
-
-	GetLog(ethRpcClient, contractAddress, int64(firstHeight))
 
 	height := firstHeight
 	fmt.Printf("Event firstHeight: %v\n", firstHeight)
@@ -40,7 +38,6 @@ func TestEth_getlogs(t *testing.T) {
 			log.Fatal(err)
 		}
 		if currentHeight == height+1 {
-			GetLog(ethRpcClient, contractAddress, int64(currentHeight))
 
 			height = currentHeight
 		}
