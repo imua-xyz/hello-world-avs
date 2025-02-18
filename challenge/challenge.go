@@ -149,13 +149,13 @@ func NewChallengeFromConfig(c types.NodeConfig) (*Challenger, error) {
 
 	return challenger, nil
 }
-func (o *Challenger) Exec(ctx context.Context) error {
-	taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), 1)
+func (o *Challenger) Exec(ctx context.Context, id, num uint64) error {
+	taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), id)
 	infos, _ := o.avsReader.GetOperatorTaskResponseList(&bind.CallOpts{}, taskInfo.TaskContractAddress.String(), taskInfo.TaskID)
 	task := &avs.AvsServiceContractChallengeReq{
 		TaskId:            taskInfo.TaskID,
 		TaskAddress:       taskInfo.TaskContractAddress,
-		NumberToBeSquared: 350,
+		NumberToBeSquared: num,
 		Infos:             infos,
 		SignedOperators:   taskInfo.SignedOperators,
 		NoSignedOperators: taskInfo.NoSignedOperators,

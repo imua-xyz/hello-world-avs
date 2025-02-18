@@ -49,6 +49,16 @@ var (
 		EnvVar:   "ECDSA_PRIVATE_KEY",
 	}
 	/* Optional Flags */
+	TaskIDFlag = &cli.IntFlag{
+		Name:     "task-ID",
+		Usage:    "task ID",
+		Required: true,
+	}
+	NumberToBeSquaredFlag = &cli.StringFlag{
+		Name:     "NumberToBeSquared",
+		Usage:    "number to be squared",
+		Required: true,
+	}
 )
 
 var requiredFlags = []cli.Flag{
