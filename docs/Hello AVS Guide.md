@@ -102,12 +102,12 @@ Continue to configure the `config.yaml` file in `hello-world-avs/config.yaml`
 ```powershell
 # this sets the logger level (true = info, false = debug)
 production: false
-#The eoa address of Operator, used for sending transactions
-operator_address: 0xAF08336BC6A8D169c34A4e9e4d6276e362F4757E
+#The eoa address of Operato, used for sending transactions
+operator_address: 0x3e108c058e8066DA635321Dc3018294cA82ddEdf
 #The eoa address of avs owner, used for sending transactions
-avs_owner_address: 0x3e108c058e8066DA635321Dc3018294cA82ddEdf
-#Address of deployed AVS contract, if it is empty, will deploy AVS on fly
-avs_address: 
+avs_owner_address: 0x4b99E597121C99ba5846c32bd49d8A4B95457f8C
+#Address of deployed AVS contract
+avs_address: 0x10Ed22D975453A5D4031440D51624552E4f204D5
 # ETH RPC URL
 eth_rpc_url: http://127.0.0.1:8545
 eth_ws_url: ws://127.0.0.1:8546
@@ -116,38 +116,39 @@ operator_ecdsa_private_key_store_path: tests/keys/operator.ecdsa.key.json
 bls_private_key_store_path: tests/keys/test.bls.key.json
 node_api_ip_port_address: 0.0.0.0:9010
 enable_node_api: false
-register_operator_on_startup: false
+register_operator_on_startup: true
 #register avs parameters
 avs_name: "hello-avs"
 min_stake_amount: 1
 avs_owner_addresses:
-  - "exo18cggcpvwspnd5c6ny8wrqxpffj5zmhklprtnph"
-  - "exo14uyrx67x4rgkns62f60y6cnkud30gat7a20fdx"
+  - "0x4b99E597121C99ba5846c32bd49d8A4B95457f8C"
+  - "0x3e108c058e8066DA635321Dc3018294cA82ddEdf"
+whitelist_addresses:
+  - "0x4b99E597121C99ba5846c32bd49d8A4B95457f8C"
+  - "0x3e108c058e8066DA635321Dc3018294cA82ddEdf"
 asset_ids:
   - "0xdac17f958d2ee523a2206206994597c13d831ec7_0x65"
 avs_unbonding_period: 7
 min_self_delegation: 0
 epoch_identifier: minute
-avs_reward_address: 
-avs_slash_address: 
-task_address: 
-params:
-  - 5
-  - 7
-  - 8
-  - 4
+avs_reward_address: 0x10Ed22D975453A5D4031440D51624552E4f204D5
+avs_slash_address: 0x10Ed22D975453A5D4031440D51624552E4f204D5
+task_address: 0x10Ed22D975453A5D4031440D51624552E4f204D5
+mini_opt_in_operators: 3
+min_total_stake_amount: 3
+avs_reward_proportion: 3
+avs_slash_proportion: 3
 #create new task parameters
 #Create task intervals,Unit second
-create_task_interval: 200
-task_response_period: 2
-task_challenge_period: 2
+create_task_interval: 100
+task_response_period: 3
+task_challenge_period: 3
 threshold_percentage: 100
-task_statistical_period: 2
+task_statistical_period: 3
 # depoist and delegate params
 deposit_amount: 100
 delegate_amount: 100
-staker: 0xa53f68563D22EB0dAFAA871b6C08a6852f91d627  
-
+staker: 0xa53f68563D22EB0dAFAA871b6C08a6852f91d627
 ```
 
 ## Register AVS and Create Task
@@ -156,13 +157,13 @@ staker: 0xa53f68563D22EB0dAFAA871b6C08a6852f91d627
 git clone https://github.com/ExocoreNetwork/hello-world-avs.git
 cd hello-world-avs
 make build
-./avs/main --config config.yaml
+./avsbinary/main --config config.yaml
 ```  
 
 Result:
 
 ```powershell
-./avs/main --config config.yaml 
+./avsbinary/main --config config.yaml 
 2024-11-13T12:27:10.955Z        INFO    logging/zap_logger.go:49        AVS_ADDRESS env var not set. will deploy avs contract
 2024-11-13T12:27:11.644Z        INFO    logging/zap_logger.go:69        tx hash: 0x81477902f1c3432b933ef58a12f9e9990dd7d3913253af687ee412927a6f8f48
 2024-11-13T12:27:11.644Z        INFO    logging/zap_logger.go:69        contract address: 0xd83404Cde3A28b751a661521Cb0aD3Cc35B7fa95
@@ -205,7 +206,7 @@ make build
 Deposit and delegate with operator module in hello-world-avs
 
 ```powershell
-./operator/main --config config.yaml
+./operatorbinary/main --config config.yaml
 ```  
 
 Result:
@@ -283,4 +284,44 @@ info:
   task_id: "1"
   task_response: eyJUYXNrSUQiOjEsIk51bWJlclN1bSI6MX0=
   task_response_hash: 0x91b8eabcc462c7ded2c0427c3bbd3e4b05c5a73ea55571ff114b43dd9aeff767
+```  
+## Challenge
+The task challenges are divided into two types: manually executing and automatically listening for events
+
+### manually executing
+```powershell
+./challengebinary --config config.yaml --ExecType 2    --task-ID  1   --NumberToBeSquared 402
+Note:Parameters must be filled in.
+   --task-ID value            task ID (default: 0)
+   --NumberToBeSquared value  number to be squared (default: 0)
+Parameter sources:It is obtained from the log of the operatorbinary process window, which is obtained by parsing event
+Examples：Received new task	{"id": "2", "name": "tYNvo", "numberToBeSquared": 270}
+```  
+### automatically executing
+```powershell
+./challengebinary --config config.yaml --ExecType 1
+```  
+
+Result:
+
+```powershell
+2025-02-19T14:22:48.151+0800	INFO	logging/zap_logger.go:69	The current task 0x10Ed22D975453A5D4031440D51624552E4f204D5--1 has been challenged:
+2025-02-19T14:23:33.037+0800	INFO	logging/zap_logger.go:49	parse logs	{"data": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAABLmeWXEhyZulhGwyvUnYpLlUV/jAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQ4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFdFlOdm8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", "height": 43, "event": [{"Name":"taskId","Type":{"Elem":null,"Size":256,"T":1,"TupleRawName":"","TupleElems":null,"TupleRawNames":null,"TupleType":null},"Indexed":false},{"Name":"issuer","Type":{"Elem":null,"Size":20,"T":7,"TupleRawName":"","TupleElems":null,"TupleRawNames":null,"TupleType":null},"Indexed":false},{"Name":"name","Type":{"Elem":null,"Size":0,"T":3,"TupleRawName":"","TupleElems":null,"TupleRawNames":null,"TupleType":null},"Indexed":false},{"Name":"numberToBeSquared","Type":{"Elem":null,"Size":64,"T":1,"TupleRawName":"","TupleElems":null,"TupleRawNames":null,"TupleType":null},"Indexed":false},{"Name":"taskResponsePeriod","Type":{"Elem":null,"Size":64,"T":1,"TupleRawName":"","TupleElems":null,"TupleRawNames":null,"TupleType":null},"Indexed":false},{"Name":"taskChallengePeriod","Type":{"Elem":null,"Size":64,"T":1,"TupleRawName":"","TupleElems":null,"TupleRawNames":null,"TupleType":null},"Indexed":false},{"Name":"thresholdPercentage","Type":{"Elem":null,"Size":8,"T":1,"TupleRawName":"","TupleElems":null,"TupleRawNames":null,"TupleType":null},"Indexed":false},{"Name":"taskStatisticalPeriod","Type":{"Elem":null,"Size":64,"T":1,"TupleRawName":"","TupleElems":null,"TupleRawNames":null,"TupleType":null},"Indexed":false}]}
+2025-02-19T14:23:33.037+0800	DEBUG	logging/zap_logger.go:45	Received new task	{"task": [2,"0x4b99e597121c99ba5846c32bd49d8a4b95457f8c","tYNvo",270,3,3,100,3]}
+2025-02-19T14:23:33.037+0800	INFO	logging/zap_logger.go:49	Received new task	{"id": "2", "name": "tYNvo", "numberToBeSquared": 270}
+2025-02-19T14:23:33.040+0800	INFO	logging/zap_logger.go:49	TriggerChallege	{"taskInfo": {"TaskContractAddress":"0x10ed22d975453a5d4031440d51624552e4f204d5","Name":"tYNvo","Hash":"SaenpZnYDurpJ7pFp6qa8w3au3+oOJhDsDnotXYf8Jk=","TaskID":2,"TaskResponsePeriod":3,"TaskStatisticalPeriod":3,"TaskChallengePeriod":3,"ThresholdPercentage":100,"StartingEpoch":44,"ActualThreshold":"","OptInOperators":["0x3e108c058e8066da635321dc3018294ca82ddedf"],"SignedOperators":[],"NoSignedOperators":[],"ErrSignedOperators":[],"TaskTotalPower":"0.000000000000000000","OperatorActivePower":[],"IsExpected":false,"EligibleRewardOperators":[],"EligibleSlashOperators":[]}}
+2025-02-19T14:23:57.244+0800	INFO	logging/zap_logger.go:49	latest-taskInfo	{"taskInfo": {"TaskContractAddress":"0x10ed22d975453a5d4031440d51624552e4f204d5","Name":"tYNvo","Hash":"SaenpZnYDurpJ7pFp6qa8w3au3+oOJhDsDnotXYf8Jk=","TaskID":2,"TaskResponsePeriod":3,"TaskStatisticalPeriod":3,"TaskChallengePeriod":3,"ThresholdPercentage":100,"StartingEpoch":44,"ActualThreshold":"","OptInOperators":["0x3e108c058e8066da635321dc3018294ca82ddedf"],"SignedOperators":["0x3e108c058e8066da635321dc3018294ca82ddedf"],"NoSignedOperators":[],"ErrSignedOperators":[],"TaskTotalPower":"5100.000000000000000000","OperatorActivePower":[{"Operator":"0x0000000000000000000000000000000000000000","Power":5100000000000000000000}],"IsExpected":false,"EligibleRewardOperators":[],"EligibleSlashOperators":[]}}
+2025-02-19T14:23:57.245+0800	INFO	logging/zap_logger.go:49	Execute raiseAndResolveChallenge	{"currentEpoch": 51, "startingEpoch": 44, "taskResponsePeriod": 3, "taskStatisticalPeriod": 3}
+2025-02-19T14:23:57.905+0800	DEBUG	logging/zap_logger.go:45	Estimating gas and nonce	{"tx": "0x8a3ae07a4bb1955768d2afb936f51caf3fd3c3df23af5656d7b9dd72ae5c68fd"}
+2025-02-19T14:23:57.913+0800	DEBUG	logging/zap_logger.go:45	Getting signer for tx	{"tx": "0x9adb229339307988f717a10f07d7f85b3557563cef1eb502d51ab1fb080a12d4"}
+2025-02-19T14:23:58.576+0800	DEBUG	logging/zap_logger.go:45	Sending transaction	{"tx": "0x9adb229339307988f717a10f07d7f85b3557563cef1eb502d51ab1fb080a12d4"}
+2025-02-19T14:24:00.265+0800	INFO	logging/zap_logger.go:49	parse logs	{"data": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAQ7SLZdUU6XUAxRA1RYkVS5PIE1Q==", "height": 52, "event": [{"Name":"taskId","Type":{"Elem":null,"Size":256,"T":1,"TupleRawName":"","TupleElems":null,"TupleRawNames":null,"TupleType":null},"Indexed":false},{"Name":"issuer","Type":{"Elem":null,"Size":20,"T":7,"TupleRawName":"","TupleElems":null,"TupleRawNames":null,"TupleType":null},"Indexed":false},{"Name":"name","Type":{"Elem":null,"Size":0,"T":3,"TupleRawName":"","TupleElems":null,"TupleRawNames":null,"TupleType":null},"Indexed":false},{"Name":"numberToBeSquared","Type":{"Elem":null,"Size":64,"T":1,"TupleRawName":"","TupleElems":null,"TupleRawNames":null,"TupleType":null},"Indexed":false},{"Name":"taskResponsePeriod","Type":{"Elem":null,"Size":64,"T":1,"TupleRawName":"","TupleElems":null,"TupleRawNames":null,"TupleType":null},"Indexed":false},{"Name":"taskChallengePeriod","Type":{"Elem":null,"Size":64,"T":1,"TupleRawName":"","TupleElems":null,"TupleRawNames":null,"TupleType":null},"Indexed":false},{"Name":"thresholdPercentage","Type":{"Elem":null,"Size":8,"T":1,"TupleRawName":"","TupleElems":null,"TupleRawNames":null,"TupleType":null},"Indexed":false},{"Name":"taskStatisticalPeriod","Type":{"Elem":null,"Size":64,"T":1,"TupleRawName":"","TupleElems":null,"TupleRawNames":null,"TupleType":null},"Indexed":false}]}
+2025-02-19T14:24:00.581+0800	INFO	logging/zap_logger.go:69	tx hash: 0x8a3ae07a4bb1955768d2afb936f51caf3fd3c3df23af5656d7b9dd72ae5c68fd
+2025-02-19T14:24:00.581+0800	INFO	logging/zap_logger.go:69	The current task 0x10Ed22D975453A5D4031440D51624552E4f204D5--2 has been challenged:
+```  
+## Check ChallengeInfo with exocore
+
+```powershell
+exocored q avs  ChallengeInfo 0x10Ed22D975453A5D4031440D51624552E4f204D5  1
+challenge_address: 4b99e597121c99ba5846c32bd49d8a4b95457f8c
 ```  
