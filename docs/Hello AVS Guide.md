@@ -325,3 +325,131 @@ Result:
 exocored q avs  ChallengeInfo 0x10Ed22D975453A5D4031440D51624552E4f204D5  1
 challenge_address: 4b99e597121c99ba5846c32bd49d8a4b95457f8c
 ```  
+
+## hello-cli
+### prints operator status as viewed from avs contracts
+```powershell
+hello-cli --config config.yaml  print-operator-status
+
+2025/02/20 01:15:54 Config: {
+  "Production": false,
+  "AVSOwnerAddress": "0x4b99E597121C99ba5846c32bd49d8A4B95457f8C",
+  "OperatorAddress": "0x3e108c058e8066DA635321Dc3018294cA82ddEdf",
+  "AVSAddress": "0x10Ed22D975453A5D4031440D51624552E4f204D5",
+  "EthRpcUrl": "http://127.0.0.1:8545",
+  "EthWsUrl": "ws://localhost:8546",
+  "BlsPrivateKeyStorePath": "tests/keys/test.bls.key.json",
+  "OperatorEcdsaPrivateKeyStorePath": "tests/keys/operator.ecdsa.key.json",
+  "AVSEcdsaPrivateKeyStorePath": "tests/keys/avs.ecdsa.key.json",
+  "RegisterOperatorOnStartup": false,
+  "NodeApiIpPortAddress": "0.0.0.0:9010",
+  "EnableNodeApi": false,
+  "AvsName": "hello-avs",
+  "MinStakeAmount": 1,
+  "AvsOwnerAddresses": [
+    "0x4b99E597121C99ba5846c32bd49d8A4B95457f8C",
+    "0x3e108c058e8066DA635321Dc3018294cA82ddEdf"
+  ],
+  "WhitelistAddresses": [
+    "0x4b99E597121C99ba5846c32bd49d8A4B95457f8C",
+    "0x3e108c058e8066DA635321Dc3018294cA82ddEdf"
+  ],
+  "AssetIDs": [
+    "0xdac17f958d2ee523a2206206994597c13d831ec7_0x65"
+  ],
+  "AvsUnbondingPeriod": 7,
+  "MinSelfDelegation": 0,
+  "EpochIdentifier": "minute",
+  "TaskAddress": "0x10Ed22D975453A5D4031440D51624552E4f204D5",
+  "AVSRewardAddress": "0x10Ed22D975453A5D4031440D51624552E4f204D5",
+  "AVSSlashAddress": "0x10Ed22D975453A5D4031440D51624552E4f204D5",
+  "CreateTaskInterval": 50,
+  "TaskResponsePeriod": 3,
+  "TaskChallengePeriod": 3,
+  "ThresholdPercentage": 100,
+  "TaskStatisticalPeriod": 3,
+  "MiniOptInOperators": 3,
+  "MinTotalStakeAmount": 3,
+  "AvsRewardProportion": 3,
+  "AvsSlashProportion": 3,
+  "DepositAmount": 100,
+  "DelegateAmount": 100,
+  "Staker": "0xa53f68563D22EB0dAFAA871b6C08a6852f91d627"
+}
+2025-02-20T01:15:54.911+0800    INFO    logging/zap_logger.go:49        OPERATOR_BLS_KEY_PASSWORD env var not set. using empty string
+2025-02-20T01:15:55.518+0800    INFO    logging/zap_logger.go:49        OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string
+2025-02-20T01:15:55.519+0800    INFO    logging/zap_logger.go:49        operatorSender: {"operatorSender": "0x3e108c058e8066DA635321Dc3018294cA82ddEdf"}
+2025-02-20T01:16:00.525+0800    INFO    logging/zap_logger.go:49        Operator info   {"operatorAddr": "0x3e108c058e8066DA635321Dc3018294cA82ddEdf", "operatorKey": "trd13VAjRPoLHT8A/Umcw/wuQhG9frusRV7ZCh5ONPJxGyP9O+inGd/bY/TSWgXb"}
+2025-02-20T01:16:00.525+0800    INFO    logging/zap_logger.go:49        Printing operator status
+2025-02-20T01:16:00.525+0800    INFO    logging/zap_logger.go:49        {
+ "EcdsaAddress": "0x3e108c058e8066DA635321Dc3018294cA82ddEdf",
+ "PubkeysRegistered": true,
+ "Pubkey": "\ufffd\ufffdu\ufffdP#D\ufffd\u000b\u001d?\u0000\ufffdI\ufffd\ufffd\ufffd.B\u0011\ufffd~\ufffd\ufffdE^\ufffd\n\u001eN4\ufffdq\u001b#\ufffd;\ufffd\ufffd\u0019\ufffd\ufffdc\ufffd\ufffdZ\u0005\ufffd",
+ "RegisteredWithAvs": false
+
+```  
+### monitor
+Subscribe to events using websocket,Monitor create and challenge tasks
+
+```powershell
+hello-cli --config config.yaml  monitor 
+2025/02/20 01:25:38 Config: {
+  "Production": false,
+  "AVSOwnerAddress": "0x4b99E597121C99ba5846c32bd49d8A4B95457f8C",
+  "OperatorAddress": "0x3e108c058e8066DA635321Dc3018294cA82ddEdf",
+  "AVSAddress": "0x10Ed22D975453A5D4031440D51624552E4f204D5",
+  "EthRpcUrl": "http://127.0.0.1:8545",
+  "EthWsUrl": "ws://localhost:8546",
+  "BlsPrivateKeyStorePath": "tests/keys/test.bls.key.json",
+  "OperatorEcdsaPrivateKeyStorePath": "tests/keys/operator.ecdsa.key.json",
+  "AVSEcdsaPrivateKeyStorePath": "tests/keys/avs.ecdsa.key.json",
+  "RegisterOperatorOnStartup": false,
+  "NodeApiIpPortAddress": "0.0.0.0:9010",
+  "EnableNodeApi": false,
+  "AvsName": "hello-avs",
+  "MinStakeAmount": 1,
+  "AvsOwnerAddresses": [
+    "0x4b99E597121C99ba5846c32bd49d8A4B95457f8C",
+    "0x3e108c058e8066DA635321Dc3018294cA82ddEdf"
+  ],
+  "WhitelistAddresses": [
+    "0x4b99E597121C99ba5846c32bd49d8A4B95457f8C",
+    "0x3e108c058e8066DA635321Dc3018294cA82ddEdf"
+  ],
+  "AssetIDs": [
+    "0xdac17f958d2ee523a2206206994597c13d831ec7_0x65"
+  ],
+  "AvsUnbondingPeriod": 7,
+  "MinSelfDelegation": 0,
+  "EpochIdentifier": "minute",
+  "TaskAddress": "0x10Ed22D975453A5D4031440D51624552E4f204D5",
+  "AVSRewardAddress": "0x10Ed22D975453A5D4031440D51624552E4f204D5",
+  "AVSSlashAddress": "0x10Ed22D975453A5D4031440D51624552E4f204D5",
+  "CreateTaskInterval": 50,
+  "TaskResponsePeriod": 3,
+  "TaskChallengePeriod": 3,
+  "ThresholdPercentage": 100,
+  "TaskStatisticalPeriod": 3,
+  "MiniOptInOperators": 3,
+  "MinTotalStakeAmount": 3,
+  "AvsRewardProportion": 3,
+  "AvsSlashProportion": 3,
+  "DepositAmount": 100,
+  "DelegateAmount": 100,
+  "Staker": "0xa53f68563D22EB0dAFAA871b6C08a6852f91d627"
+}
+Starting event monitoring...
+New Task Created:
+  TaskID: 25
+  Issuer: 0x4b99E597121C99ba5846c32bd49d8A4B95457f8C
+  Name: R6LOT
+  Number: 429
+  Response Period: 3
+  Challenge Period: 3
+  Threshold: 100%
+  Statistical Period: 3
+Task Resolved:
+  TaskID: 25
+  Address: 0x10Ed22D975453A5D4031440D51624552E4f204D5
+
+```  

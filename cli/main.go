@@ -37,8 +37,14 @@ func main() {
 		{
 			Name:    "print-operator-status",
 			Aliases: []string{"s"},
-			Usage:   "prints operator status as viewed from incredible squaring contracts",
+			Usage:   "prints operator status as viewed from avs contracts",
 			Action:  actions.PrintOperatorStatus,
+		},
+		{
+			Name:    "monitor",
+			Aliases: []string{"m"},
+			Usage:   "Subscribe to events using websocket,Monitor create and challenge tasks",
+			Action:  actions.Monitor,
 		},
 	}
 

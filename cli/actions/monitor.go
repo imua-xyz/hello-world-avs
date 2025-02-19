@@ -1,37 +1,50 @@
-package main
+package actions
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	avs "github.com/ExocoreNetwork/exocore-avs/contracts/bindings/avs"
+	"github.com/ExocoreNetwork/exocore-avs/core/config"
+	"github.com/ExocoreNetwork/exocore-avs/types"
+	sdkutils "github.com/ExocoreNetwork/exocore-sdk/utils"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"log"
+
+	"github.com/urfave/cli"
 )
 
-const (
-	wsURL       = "ws://localhost:8546"
-	contractHex = "0x10Ed22D975453A5D4031440D51624552E4f204D5"
-)
+func Monitor(ctx *cli.Context) error {
+	configPath := ctx.GlobalString(config.FileFlag.Name)
+	nodeConfig := types.NodeConfig{}
+	err := sdkutils.ReadYamlConfig(configPath, &nodeConfig)
+	if err != nil {
+		return err
+	}
+	// need to make sure we don't register the operator on startup
+	// when using the cli commands to register the operator.
+	nodeConfig.RegisterOperatorOnStartup = false
+	configJson, err := json.MarshalIndent(nodeConfig, "", "  ")
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	log.Println("Config:", string(configJson))
 
-func main() {
-	// 创建客户端连接
-	client, err := ethclient.Dial(wsURL)
+	client, err := ethclient.Dial(nodeConfig.EthWsUrl)
 	if err != nil {
 		log.Fatal("Connection failed:", err)
 	}
 	defer client.Close()
 
-	// 创建事件过滤查询
-	contractAddress := common.HexToAddress(contractHex)
+	contractAddress := common.HexToAddress(nodeConfig.AVSAddress)
 	query := ethereum.FilterQuery{
 		Addresses: []common.Address{contractAddress},
 	}
 
-	// 创建日志通道
-	logs := make(chan types.Log)
+	logs := make(chan ethtypes.Log)
 	sub, err := client.SubscribeFilterLogs(context.Background(), query, logs)
 	if err != nil {
 		log.Fatal("Subscribe failed:", err)
@@ -78,9 +91,7 @@ func main() {
 	}
 }
 
-// 解析日志到具体事件
-func parseEvent(vLog types.Log) (interface{}, error) {
-	// 通过事件哈希判断事件类型
+func parseEvent(vLog ethtypes.Log) (interface{}, error) {
 	contractABI, _ := avs.ContracthelloWorldMetaData.GetAbi()
 
 	switch vLog.Topics[0] {
@@ -93,11 +104,10 @@ func parseEvent(vLog types.Log) (interface{}, error) {
 	}
 }
 
-func parseTaskCreated(vLog types.Log) (*avs.ContracthelloWorldTaskCreated, error) {
+func parseTaskCreated(vLog ethtypes.Log) (*avs.ContracthelloWorldTaskCreated, error) {
 	var event avs.ContracthelloWorldTaskCreated
 	contractABI, _ := avs.ContracthelloWorldMetaData.GetAbi()
 
-	// 由于都是非索引参数，直接解码Data字段
 	err := contractABI.UnpackIntoInterface(&event, "TaskCreated", vLog.Data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unpack TaskCreated: %v", err)
@@ -106,7 +116,7 @@ func parseTaskCreated(vLog types.Log) (*avs.ContracthelloWorldTaskCreated, error
 	return &event, nil
 }
 
-func parseTaskResolved(vLog types.Log) (*avs.ContracthelloWorldTaskResolved, error) {
+func parseTaskResolved(vLog ethtypes.Log) (*avs.ContracthelloWorldTaskResolved, error) {
 	var event avs.ContracthelloWorldTaskResolved
 	contractABI, _ := avs.ContracthelloWorldMetaData.GetAbi()
 

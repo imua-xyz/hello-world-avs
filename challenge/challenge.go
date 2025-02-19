@@ -197,7 +197,6 @@ func (o *Challenger) Start(ctx context.Context) error {
 		case err := <-sub.Err():
 			o.logger.Error("Subscription error:", err)
 		case vLog := <-logs:
-			// 解析日志
 			event, err := o.parseEvent(vLog)
 			if err != nil {
 				o.logger.Info("Not as expected TaskCreated log ，parse err:", "err", err)

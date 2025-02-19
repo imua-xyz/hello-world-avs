@@ -16,9 +16,12 @@ import (
 	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
 	"github.com/cosmos/btcutil/bech32"
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	blscommon "github.com/prysmaticlabs/prysm/v5/crypto/bls/common"
 	"math/big"
 	"os"
@@ -34,13 +37,13 @@ const (
 )
 
 type Operator struct {
-	config        types.NodeConfig
-	logger        sdklogging.Logger
-	ethClient     eth.EthClient
-	nodeApi       *nodeapi.NodeApi
-	avsWriter     chain.ExoWriter
-	avsReader     chain.ExoChainReader
-	avsSubscriber chain.AvsRegistrySubscriber
+	config      types.NodeConfig
+	logger      sdklogging.Logger
+	ethClient   eth.EthClient
+	nodeApi     *nodeapi.NodeApi
+	avsWriter   chain.ExoWriter
+	avsReader   chain.ExoChainReader
+	ethWsClient *ethclient.Client
 
 	blsKeypair   blscommon.SecretKey
 	operatorAddr common.Address
@@ -49,6 +52,7 @@ type Operator struct {
 	// needed when opting in to avs (allow this service manager contract to slash operator)
 	avsAddr         common.Address
 	epochIdentifier string
+	contractABI     abi.ABI
 }
 
 func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
@@ -66,14 +70,14 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	// Setup Node Api
 	nodeApi := nodeapi.NewNodeApi(AvsName, SemVer, c.NodeApiIpPortAddress, logger)
 
-	var ethRpcClient, ethWsClient eth.EthClient
+	var ethRpcClient eth.EthClient
 	ethRpcClient, err = eth.NewClient(c.EthRpcUrl)
 	if err != nil {
 		logger.Error("can not create http eth client", "err", err)
 
 		return nil, err
 	}
-	ethWsClient, err = eth.NewClient(c.EthWsUrl)
+	ethWsClient, err := ethclient.Dial(c.EthWsUrl)
 	if err != nil {
 		logger.Error("Cannot create ws eth client", "err", err)
 		return nil, err
@@ -132,12 +136,6 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		logger,
 		txMgr)
 
-	avsSubscriber, _ := chain.BuildAvsRegistryChainSubscriber(
-		common.HexToAddress(c.AVSAddress),
-		ethWsClient,
-		logger,
-	)
-
 	if err != nil {
 		logger.Error("Cannot create AvsSubscriber", "err", err)
 		return nil, err
@@ -147,6 +145,12 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		logger.Error("Cannot GetAVSEpochIdentifier", "err", err)
 		return nil, err
 	}
+	contractABI, err := avs.ContracthelloWorldMetaData.GetAbi()
+	if err != nil {
+		logger.Error("Cannot GetAbi", "err", err)
+		return nil, err
+	}
+
 	operator := &Operator{
 		config:             c,
 		logger:             logger,
@@ -154,12 +158,13 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		ethClient:          ethRpcClient,
 		avsWriter:          avsWriter,
 		avsReader:          *avsReader,
-		avsSubscriber:      avsSubscriber,
+		ethWsClient:        ethWsClient,
 		blsKeypair:         blsKeyPair,
 		operatorAddr:       common.HexToAddress(c.OperatorAddress),
 		newTaskCreatedChan: make(chan *avs.ContracthelloWorldTaskCreated),
 		avsAddr:            common.HexToAddress(c.AVSAddress),
 		epochIdentifier:    epochIdentifier,
+		contractABI:        *contractABI,
 	}
 
 	if c.RegisterOperatorOnStartup {
@@ -308,87 +313,32 @@ func (o *Operator) Start(ctx context.Context) error {
 		o.nodeApi.Start()
 	}
 
-	firstHeight, err := o.ethClient.BlockNumber(context.Background())
-	if err != nil {
-		o.logger.Error("Cannot create AvsSubscriber", "err", err)
-		return err
-	}
-	o.GetLog(int64(firstHeight))
-
-	height := firstHeight
-	o.logger.Info("Event firstHeight: ", "First detected block height", firstHeight)
-	// Channel to receive new block heights
-	blockCh := make(chan uint64)
-
-	// Start a goroutine to monitor block heights
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				o.logger.Info("Stopping block monitoring")
-				close(blockCh)
-				return
-			default:
-				currentHeight, err := o.ethClient.BlockNumber(ctx)
-				if err != nil {
-					o.logger.Error("Error getting block number", "err", err)
-					continue
-				}
-				if currentHeight == height+1 {
-					blockCh <- currentHeight
-					height = currentHeight
-				}
-			}
-		}
-	}()
-	// Process new block heights as they are received
-	for {
-		select {
-		case <-ctx.Done():
-			o.logger.Info("Context cancelled, exiting loop")
-			return nil
-		case newHeight, ok := <-blockCh:
-			// o.logger.Info("newHeight", newHeight)
-			if !ok {
-				o.logger.Info("Block channel closed, exiting loop")
-				return nil
-			}
-			if err := o.GetLog(int64(newHeight)); err != nil {
-				o.logger.Error("Error retrieving logs for block %d: %v", newHeight, err)
-			}
-		}
-	}
-}
-func (o *Operator) GetLog(height int64) error {
 	query := ethereum.FilterQuery{
 		Addresses: []common.Address{o.avsAddr},
-		FromBlock: big.NewInt(height),
-		ToBlock:   big.NewInt(height),
 	}
+	logs := make(chan ethtypes.Log)
 
-	logs, err := o.ethClient.FilterLogs(context.Background(), query)
+	sub, err := o.ethWsClient.SubscribeFilterLogs(context.Background(), query, logs)
 	if err != nil {
-		o.logger.Error("Failed to filter logs", "err", err)
-		return err
+		o.logger.Error("Subscribe failed", "err", err)
+
 	}
-	if logs != nil {
-		contractAbi, _ := avs.ContracthelloWorldMetaData.GetAbi()
-		event := contractAbi.Events["TaskCreated"]
-		for _, vLog := range logs {
-			data := vLog.Data
+	defer sub.Unsubscribe()
 
-			eventArgs, err := event.Inputs.Unpack(data)
+	o.logger.Infof("Starting event monitoring...")
 
-			o.logger.Info("parse logs",
-				"data", hex.EncodeToString(data),
-				"height", height,
-				"event", event.Inputs)
-
+	for {
+		select {
+		case err := <-sub.Err():
+			o.logger.Error("Subscription error:", err)
+		case vLog := <-logs:
+			event, err := o.parseEvent(vLog)
 			if err != nil {
-				o.logger.Info("Not as expected log ，parse err:", "err", err)
+				o.logger.Info("Not as expected TaskCreated log ，parse err:", "err", err)
 			}
-			if eventArgs != nil {
-				taskResponse := o.ProcessNewTaskCreatedLog(eventArgs)
+			if event != nil {
+				e := event.(*avs.ContracthelloWorldTaskCreated)
+				taskResponse := o.ProcessNewTaskCreatedLog(e)
 				sig, resBytes, err := o.SignTaskResponse(taskResponse)
 				if err != nil {
 					o.logger.Error("Failed to sign task response", "err", err)
@@ -398,28 +348,33 @@ func (o *Operator) GetLog(height int64) error {
 				go func() {
 					_, err := o.SendSignedTaskResponseToExocore(context.Background(), taskResponse.TaskID, resBytes, sig, taskInfo)
 					if err != nil {
-						o.logger.Error("SendSignedTaskResponseToExoCore err:", "err", err)
+
 					}
 				}()
 			}
 		}
 	}
-	return nil
+}
+func (o *Operator) parseEvent(vLog ethtypes.Log) (interface{}, error) {
+
+	vLog.Topics[0] = o.contractABI.Events["TaskCreated"].ID
+
+	var event avs.ContracthelloWorldTaskCreated
+
+	err := o.contractABI.UnpackIntoInterface(&event, "TaskCreated", vLog.Data)
+	if err != nil {
+		return nil, err
+	}
+	return &event, nil
 }
 
 // ProcessNewTaskCreatedLog TaskResponse is the struct that is signed and sent to the exocore as a task response.
-func (o *Operator) ProcessNewTaskCreatedLog(eventArgs []interface{}) *core.TaskResponse {
-	o.logger.Debug("Received new task", "task", eventArgs)
-	o.logger.Info("Received new task",
-		"id", eventArgs[0].(*big.Int),
-		"name", eventArgs[2].(string),
-		"numberToBeSquared", eventArgs[3].(uint64),
-	)
-	taskId := eventArgs[0].(*big.Int)
-	numberToBeSquared := eventArgs[3].(uint64)
+func (o *Operator) ProcessNewTaskCreatedLog(e *avs.ContracthelloWorldTaskCreated) *core.TaskResponse {
+	o.logger.Info("New Task Created", "TaskID", e.TaskId.Uint64(),
+		"Issuer", e.Issuer.String(), "Name", e.Name, "NumberToBeSquared", e.NumberToBeSquared)
 	taskResponse := &core.TaskResponse{
-		TaskID:        taskId.Uint64(),
-		NumberSquared: numberToBeSquared * numberToBeSquared,
+		TaskID:        e.TaskId.Uint64(),
+		NumberSquared: e.NumberToBeSquared,
 	}
 	return taskResponse
 }
