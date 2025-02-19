@@ -2,6 +2,7 @@ package operator_test
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	avs "github.com/ExocoreNetwork/exocore-avs/contracts/bindings/avs"
 	"github.com/ExocoreNetwork/exocore-avs/core"
@@ -43,9 +44,42 @@ func TestAbi(t *testing.T) {
 	t.Logf("Key: %v", key)
 
 }
+func TestEvent(t *testing.T) {
+
+	dataStr := "000000000000000000000000000000000000000000000000000000000000000100000000000000000000000010ed22d975453a5d4031440d51624552e4f204d50000000000000000000000004b99e597121c99ba5846c32bd49d8a4b95457f8c0000000000000000000000000000000000000000000000000000000000000064000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000000010000000000000000000000003e108c058e8066da635321dc3018294ca82ddedf00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000"
+	contractAbi, _ := avs.ContracthelloWorldMetaData.GetAbi()
+	event := contractAbi.Events["TaskCreated"]
+
+	eventInputs := event.Inputs
+	data, _ := hex.DecodeString(dataStr)
+	eventArgs, err := eventInputs.Unpack(data)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	taskId := eventArgs[0].(*big.Int)
+	fmt.Printf("Task ID: %v\n", taskId)
+	issuer := eventArgs[1].(common.Address)
+	fmt.Printf("Issuer: %s\n", issuer.Hex())
+
+	name := eventArgs[2].(string)
+	fmt.Printf("Name: %s\n", name)
+	num := eventArgs[3].(uint64)
+	fmt.Printf("num: %d\n", num)
+
+	taskResponsePeriod := eventArgs[4].(uint64)
+	fmt.Printf("Task Response Period: %d\n", taskResponsePeriod)
+	taskChallengePeriod := eventArgs[5].(uint64)
+	fmt.Printf("Task Challenge Period: %d\n", taskChallengePeriod)
+	thresholdPercentage := eventArgs[6].(uint8)
+	fmt.Printf("Threshold Percentage: %d\n", thresholdPercentage)
+	taskStatisticalPeriod := eventArgs[7].(uint64)
+	fmt.Printf("Task Statistical Period: %d\n", taskStatisticalPeriod)
+}
 
 // doc：https://docs.infura.io/api/networks/ethereum/json-rpc-methods/eth_getlogs
-func TestEth_getlogs(t *testing.T) {
+func TestEth_GetLogs(t *testing.T) {
 	ethRpcClient, err := eth.NewClient("http://localhost:8545")
 	if err != nil {
 		log.Fatal("Cannot create http ethclient", "err", err)
@@ -61,7 +95,7 @@ func TestEth_getlogs(t *testing.T) {
 	}
 	firstHeight, err := ethRpcClient.BlockNumber(context.Background())
 
-	GetLog(ethRpcClient, contractAddress, int64(firstHeight))
+	GetLog(ethRpcClient, contractAddress, int64(29))
 
 	height := firstHeight
 	fmt.Printf("Event firstHeight: %v\n", firstHeight)
@@ -112,26 +146,33 @@ func GetLog(client eth.EthClient, address common.Address, height int64) {
 				"height", height,
 				"event", event.Inputs)
 			if err != nil {
-				log.Fatal(err)
+				fmt.Println("Not as expected log ，parse err:", err)
+				return
 			}
 
-			// taskId := eventArgs[0].(*big.Int)
-			issuer := eventArgs[1].(common.Address)
-			name := eventArgs[2].(string)
-			taskResponsePeriod := eventArgs[3].(uint64)
-			taskChallengePeriod := eventArgs[4].(uint64)
-			thresholdPercentage := eventArgs[5].(uint64)
-			taskStatisticalPeriod := eventArgs[6].(uint64)
-			fmt.Println(data)
-			fmt.Println(eventArgs)
+			taskId := eventArgs[0].(*big.Int)
+			fmt.Println("taskId:", taskId)
 
-			// log.Printf("Task ID: %v", taskId)
-			fmt.Printf("Issuer: %s", issuer.Hex())
-			fmt.Printf(name)
-			fmt.Printf("Task Response Period: %d", taskResponsePeriod)
-			fmt.Printf("Task Challenge Period: %d", taskChallengePeriod)
-			fmt.Printf("Threshold Percentage: %d", thresholdPercentage)
-			fmt.Printf("Task Statistical Period: %d", taskStatisticalPeriod)
+			issuer := eventArgs[1].(common.Address)
+			fmt.Println("Issuer:", issuer.Hex())
+
+			name := eventArgs[2].(string)
+			fmt.Println("name:", name)
+			numberToBeSquared := eventArgs[3].(uint64)
+			fmt.Println("numberToBeSquared:", numberToBeSquared)
+
+			taskResponsePeriod := eventArgs[4].(uint64)
+			fmt.Println("Task Response Period: ", taskResponsePeriod)
+
+			taskChallengePeriod := eventArgs[5].(uint64)
+			fmt.Println("Task Challenge Period:", taskChallengePeriod)
+
+			thresholdPercentage := eventArgs[6].(uint8)
+			fmt.Println("Threshold Percentage:", thresholdPercentage)
+
+			taskStatisticalPeriod := eventArgs[7].(uint64)
+
+			fmt.Println("Task Statistical Period:", taskStatisticalPeriod)
 		}
 	}
 

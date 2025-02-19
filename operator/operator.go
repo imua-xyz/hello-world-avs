@@ -250,12 +250,12 @@ func (o *Operator) Start(ctx context.Context) error {
 			err = o.Delegate()
 			if err != nil {
 				panic(fmt.Sprintf("Can not Delegate: %s", err))
-				return err
+
 			}
 			err = o.SelfDelegate()
 			if err != nil {
 				panic(fmt.Sprintf("Can not SelfDelegate: %s", err))
-				return err
+
 			}
 		}
 		// USD value voting power is updated by epoch for cycle
@@ -295,12 +295,10 @@ func (o *Operator) Start(ctx context.Context) error {
 			err = o.Delegate()
 			if err != nil {
 				panic(fmt.Sprintf("Can not Delegate: %s", err))
-				return err
 			}
 			err = o.SelfDelegate()
 			if err != nil {
 				panic(fmt.Sprintf("Can not SelfDelegate: %s", err))
-				return err
 			}
 		}
 	}
@@ -379,17 +377,16 @@ func (o *Operator) GetLog(height int64) error {
 		for _, vLog := range logs {
 			data := vLog.Data
 
-			eventArgs, _ := event.Inputs.Unpack(data)
+			eventArgs, err := event.Inputs.Unpack(data)
 
 			o.logger.Info("parse logs",
-				"data", data,
+				"data", hex.EncodeToString(data),
 				"height", height,
 				"event", event.Inputs)
 
-			/*if err != nil {
-				o.logger.Error("Failed to unpack event inputs", "err", err)
-				return err
-			}*/
+			if err != nil {
+				o.logger.Info("Not as expected log ，parse err:", "err", err)
+			}
 			if eventArgs != nil {
 				taskResponse := o.ProcessNewTaskCreatedLog(eventArgs)
 				sig, resBytes, err := o.SignTaskResponse(taskResponse)
@@ -398,7 +395,12 @@ func (o *Operator) GetLog(height int64) error {
 					continue
 				}
 				taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), taskResponse.TaskID)
-				go o.SendSignedTaskResponseToExocore(context.Background(), taskResponse.TaskID, resBytes, sig, taskInfo)
+				go func() {
+					_, err := o.SendSignedTaskResponseToExocore(context.Background(), taskResponse.TaskID, resBytes, sig, taskInfo)
+					if err != nil {
+						o.logger.Error("SendSignedTaskResponseToExoCore err:", "err", err)
+					}
+				}()
 			}
 		}
 	}

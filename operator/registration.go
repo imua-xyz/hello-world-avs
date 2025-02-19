@@ -8,7 +8,7 @@ import (
 )
 
 func (o *Operator) registerOperatorOnStartup() {
-	err := o.RegisterOperatorWithExoCore()
+	err := o.RegisterOperatorWithExocore()
 	if err != nil {
 		// This error might only be that the operator was already registered with exocore, so we don't want to fatal
 		o.logger.Error("Error registering operator with exocore", "err", err)
@@ -21,7 +21,7 @@ func (o *Operator) registerOperatorOnStartup() {
 		o.logger.Fatal("Error registering operator with avs", "err", err)
 	}
 }
-func (o *Operator) RegisterOperatorWithExoCore() error {
+func (o *Operator) RegisterOperatorWithExocore() error {
 	flag, err := o.avsReader.IsOperator(&bind.CallOpts{}, o.operatorAddr.String())
 	if err != nil {
 		o.logger.Error("Cannot exec IsOperator", "err", err)

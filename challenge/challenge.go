@@ -12,8 +12,11 @@ import (
 	"github.com/ExocoreNetwork/exocore-sdk/nodeapi"
 	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"math/big"
 	"os"
 	"strconv"
@@ -23,28 +26,19 @@ const (
 	AvsName = "hello-world-avs-demo"
 	SemVer  = "0.0.1"
 	// DayEpochID defines the identifier for a daily epoch.
-	DayEpochID = "day"
-	// HourEpochID defines the identifier for an hourly epoch.
-	HourEpochID = "hour"
-	// MinuteEpochID defines the identifier for an epoch that is a minute long.
-	MinuteEpochID = "minute"
-	// WeekEpochID defines the identifier for a weekly epoch.
-	WeekEpochID = "week"
 )
 
 type Challenger struct {
-	config        types.NodeConfig
-	logger        sdklogging.Logger
-	ethClient     eth.EthClient
-	nodeApi       *nodeapi.NodeApi
-	avsWriter     chain.ExoWriter
-	avsReader     chain.ExoChainReader
-	avsSubscriber chain.AvsRegistrySubscriber
-	// receive new tasks in this chan (typically from listening to onchain event)
-	newTaskCreatedChan chan *avs.ContracthelloWorldTaskCreated
-	// needed when opting in to avs (allow this service manager contract to slash operator)
+	config          types.NodeConfig
+	logger          sdklogging.Logger
+	ethClient       eth.EthClient
+	ethWsClient     *ethclient.Client
+	nodeApi         *nodeapi.NodeApi
+	avsWriter       chain.ExoWriter
+	avsReader       chain.ExoChainReader
 	avsAddr         common.Address
 	epochIdentifier string
+	contractABI     abi.ABI
 }
 
 func NewChallengeFromConfig(c types.NodeConfig) (*Challenger, error) {
@@ -62,14 +56,14 @@ func NewChallengeFromConfig(c types.NodeConfig) (*Challenger, error) {
 	// Setup Node Api
 	nodeApi := nodeapi.NewNodeApi(AvsName, SemVer, c.NodeApiIpPortAddress, logger)
 
-	var ethRpcClient, ethWsClient eth.EthClient
+	var ethRpcClient eth.EthClient
 	ethRpcClient, err = eth.NewClient(c.EthRpcUrl)
 	if err != nil {
 		logger.Error("can not create http eth client", "err", err)
 
 		return nil, err
 	}
-	ethWsClient, err = eth.NewClient(c.EthWsUrl)
+	ethWsClient, err := ethclient.Dial(c.EthWsUrl)
 	if err != nil {
 		logger.Error("Cannot create ws eth client", "err", err)
 		return nil, err
@@ -118,12 +112,6 @@ func NewChallengeFromConfig(c types.NodeConfig) (*Challenger, error) {
 		logger,
 		txMgr)
 
-	avsSubscriber, _ := chain.BuildAvsRegistryChainSubscriber(
-		common.HexToAddress(c.AVSAddress),
-		ethWsClient,
-		logger,
-	)
-
 	if err != nil {
 		logger.Error("Cannot create AvsSubscriber", "err", err)
 		return nil, err
@@ -133,17 +121,22 @@ func NewChallengeFromConfig(c types.NodeConfig) (*Challenger, error) {
 		logger.Error("Cannot GetAVSEpochIdentifier", "err", err)
 		return nil, err
 	}
+	contractABI, err := avs.ContracthelloWorldMetaData.GetAbi()
+	if err != nil {
+		logger.Error("Cannot GetAbi", "err", err)
+		return nil, err
+	}
 	challenger := &Challenger{
-		config:             c,
-		logger:             logger,
-		nodeApi:            nodeApi,
-		ethClient:          ethRpcClient,
-		avsWriter:          avsWriter,
-		avsReader:          *avsReader,
-		avsSubscriber:      avsSubscriber,
-		newTaskCreatedChan: make(chan *avs.ContracthelloWorldTaskCreated),
-		avsAddr:            common.HexToAddress(c.AVSAddress),
-		epochIdentifier:    epochIdentifier,
+		config:          c,
+		logger:          logger,
+		nodeApi:         nodeApi,
+		ethClient:       ethRpcClient,
+		ethWsClient:     ethWsClient,
+		avsWriter:       avsWriter,
+		avsReader:       *avsReader,
+		avsAddr:         common.HexToAddress(c.AVSAddress),
+		epochIdentifier: epochIdentifier,
+		contractABI:     *contractABI,
 	}
 	logger.Info("challenger info", "challengeAddr", c.AVSOwnerAddress)
 
@@ -185,97 +178,40 @@ func (o *Challenger) Start(ctx context.Context) error {
 	if o.config.EnableNodeApi {
 		o.nodeApi.Start()
 	}
-
-	firstHeight, err := o.ethClient.BlockNumber(context.Background())
-	if err != nil {
-		o.logger.Error("Cannot create AvsSubscriber", "err", err)
-		return err
-	}
-	err = o.GetLog(int64(firstHeight))
-	if err != nil {
-		return err
-	}
-
-	height := firstHeight
-	o.logger.Info("Event firstHeight: ", "First detected block height", firstHeight)
-	// Channel to receive new block heights
-	blockCh := make(chan uint64)
-
-	// Start a goroutine to monitor block heights
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				o.logger.Info("Stopping block monitoring")
-				close(blockCh)
-				return
-			default:
-				currentHeight, err := o.ethClient.BlockNumber(ctx)
-				if err != nil {
-					o.logger.Error("Error getting block number", "err", err)
-					continue
-				}
-				if currentHeight == height+1 {
-					blockCh <- currentHeight
-					height = currentHeight
-				}
-			}
-		}
-	}()
-	// Process new block heights as they are received
-	for {
-		select {
-		case <-ctx.Done():
-			o.logger.Info("Context cancelled, exiting loop")
-			return nil
-		case newHeight, ok := <-blockCh:
-			// o.logger.Info("newHeight", newHeight)
-			if !ok {
-				o.logger.Info("Block channel closed, exiting loop")
-				return nil
-			}
-			if err := o.GetLog(int64(newHeight)); err != nil {
-				o.logger.Error("Error retrieving logs for block %d: %v", newHeight, err)
-			}
-		}
-	}
-}
-func (o *Challenger) GetLog(height int64) error {
 	query := ethereum.FilterQuery{
 		Addresses: []common.Address{o.avsAddr},
-		FromBlock: big.NewInt(height),
-		ToBlock:   big.NewInt(height),
 	}
+	logs := make(chan ethtypes.Log)
 
-	logs, err := o.ethClient.FilterLogs(context.Background(), query)
+	sub, err := o.ethWsClient.SubscribeFilterLogs(context.Background(), query, logs)
 	if err != nil {
-		o.logger.Error("Failed to filter logs", "err", err)
-		return err
-	}
-	if logs != nil {
-		contractAbi, _ := avs.ContracthelloWorldMetaData.GetAbi()
-		event := contractAbi.Events["TaskCreated"]
-		for _, vLog := range logs {
-			data := vLog.Data
-			o.logger.Info("parse logs",
-				"data", data,
-				"height", height,
-				"event", event.Inputs)
-			eventArgs, _ := event.Inputs.Unpack(data)
-			/*if err != nil {
-				o.logger.Error("Failed to unpack event inputs", "err", err)
-				return err
-			}*/
-			if eventArgs != nil {
-				task := o.ProcessNewTaskCreatedLog(eventArgs)
+		o.logger.Error("Subscribe failed", "err", err)
 
+	}
+	defer sub.Unsubscribe()
+
+	o.logger.Infof("Starting event monitoring...")
+
+	for {
+		select {
+		case err := <-sub.Err():
+			o.logger.Error("Subscription error:", err)
+		case vLog := <-logs:
+			// 解析日志
+			event, err := o.parseEvent(vLog)
+			if err != nil {
+				o.logger.Info("Not as expected TaskCreated log ，parse err:", "err", err)
+			}
+			if event != nil {
+				e := event.(*avs.ContracthelloWorldTaskCreated)
+				task := o.ProcessNewTaskCreatedLog(e)
 				taskInfo, err := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), task.TaskId)
 				if err != nil {
 					o.logger.Error("Failed to GetTaskInfo", "err", err)
 					return err
 				}
 				go func() {
-					_, err := o.TriggerChallege(context.Background(), *task, taskInfo)
+					_, err := o.TriggerChallenge(context.Background(), *task, taskInfo)
 					if err != nil {
 
 					}
@@ -283,30 +219,24 @@ func (o *Challenger) GetLog(height int64) error {
 			}
 		}
 	}
-	return nil
 }
 
 // ProcessNewTaskCreatedLog TaskResponse is the struct that is signed and sent to the exocore as a task response.
-func (o *Challenger) ProcessNewTaskCreatedLog(eventArgs []interface{}) *avs.AvsServiceContractChallengeReq {
-	o.logger.Debug("Received new task", "task", eventArgs)
-	o.logger.Info("Received new task",
-		"id", eventArgs[0].(*big.Int),
-		"name", eventArgs[2].(string),
-		"numberToBeSquared", eventArgs[3].(uint64),
-	)
-
+func (o *Challenger) ProcessNewTaskCreatedLog(e *avs.ContracthelloWorldTaskCreated) *avs.AvsServiceContractChallengeReq {
+	o.logger.Info("New Task Created", "TaskID", e.TaskId.Uint64(),
+		"Issuer", e.Issuer.String(), "Name", e.Name, "NumberToBeSquared", e.NumberToBeSquared)
 	task := &avs.AvsServiceContractChallengeReq{
-		TaskId:            eventArgs[0].(*big.Int).Uint64(),
-		NumberToBeSquared: eventArgs[3].(uint64),
+		TaskId:            e.TaskId.Uint64(),
+		NumberToBeSquared: e.NumberToBeSquared,
 	}
 	return task
 }
 
-func (o *Challenger) TriggerChallege(
+func (o *Challenger) TriggerChallenge(
 	ctx context.Context,
 	task avs.AvsServiceContractChallengeReq,
 	taskInfo avs.TaskInfo) (string, error) {
-	o.logger.Info("TriggerChallege", "taskInfo", taskInfo)
+	o.logger.Info("TriggerChallenge", "taskInfo", taskInfo)
 	epochIdentifier, err := o.avsReader.GetAVSEpochIdentifier(&bind.CallOpts{}, o.avsAddr.String())
 	startingEpoch := taskInfo.StartingEpoch
 	taskResponsePeriod := taskInfo.TaskResponsePeriod
@@ -370,4 +300,16 @@ func (o *Challenger) TriggerChallege(
 			}
 		}
 	}
+}
+func (o *Challenger) parseEvent(vLog ethtypes.Log) (interface{}, error) {
+
+	vLog.Topics[0] = o.contractABI.Events["TaskCreated"].ID
+
+	var event avs.ContracthelloWorldTaskCreated
+
+	err := o.contractABI.UnpackIntoInterface(&event, "TaskCreated", vLog.Data)
+	if err != nil {
+		return nil, err
+	}
+	return &event, nil
 }
