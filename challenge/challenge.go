@@ -16,7 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"os"
-	"time"
+	"strconv"
 )
 
 const (
@@ -149,8 +149,8 @@ func NewChallengeFromConfig(c types.NodeConfig) (*Challenger, error) {
 
 	return challenger, nil
 }
-func (o *Challenger) Exec(ctx context.Context, id, num uint64) error {
-	taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), id)
+func (o *Challenger) Exec(ctx context.Context, taskID, num uint64) error {
+	taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), taskID)
 	infos, _ := o.avsReader.GetOperatorTaskResponseList(&bind.CallOpts{}, taskInfo.TaskContractAddress.String(), taskInfo.TaskID)
 	task := &avs.AvsServiceContractChallengeReq{
 		TaskId:            taskInfo.TaskID,
@@ -161,7 +161,7 @@ func (o *Challenger) Exec(ctx context.Context, id, num uint64) error {
 		NoSignedOperators: taskInfo.NoSignedOperators,
 		TaskTotalPower:    taskInfo.TaskTotalPower,
 	}
-	o.logger.Info("challenger info", "challenge-TaskResponse", infos[0].TaskResponse)
+	o.logger.Info("challenger info", "challenge-TaskResponse", taskInfo)
 	_, err := o.avsWriter.Challenge(
 		ctx,
 		*task)
@@ -170,7 +170,6 @@ func (o *Challenger) Exec(ctx context.Context, id, num uint64) error {
 		o.logger.Error("Challeger failed to raiseAndResolveChallenge", "err", err)
 		return fmt.Errorf("failed to raiseAndResolveChallenge: %w", err)
 	}
-
 	return nil
 }
 func (o *Challenger) Start(ctx context.Context) error {
@@ -192,7 +191,10 @@ func (o *Challenger) Start(ctx context.Context) error {
 		o.logger.Error("Cannot create AvsSubscriber", "err", err)
 		return err
 	}
-	o.GetLog(int64(firstHeight))
+	err = o.GetLog(int64(firstHeight))
+	if err != nil {
+		return err
+	}
 
 	height := firstHeight
 	o.logger.Info("Event firstHeight: ", "First detected block height", firstHeight)
@@ -255,12 +257,15 @@ func (o *Challenger) GetLog(height int64) error {
 		event := contractAbi.Events["TaskCreated"]
 		for _, vLog := range logs {
 			data := vLog.Data
-
-			eventArgs, err := event.Inputs.Unpack(data)
-			if err != nil {
+			o.logger.Info("parse logs",
+				"data", data,
+				"height", height,
+				"event", event.Inputs)
+			eventArgs, _ := event.Inputs.Unpack(data)
+			/*if err != nil {
 				o.logger.Error("Failed to unpack event inputs", "err", err)
 				return err
-			}
+			}*/
 			if eventArgs != nil {
 				task := o.ProcessNewTaskCreatedLog(eventArgs)
 
@@ -301,39 +306,11 @@ func (o *Challenger) TriggerChallege(
 	ctx context.Context,
 	task avs.AvsServiceContractChallengeReq,
 	taskInfo avs.TaskInfo) (string, error) {
-	o.logger.Debug("TriggerChallege", "taskInfo", taskInfo)
+	o.logger.Info("TriggerChallege", "taskInfo", taskInfo)
 	epochIdentifier, err := o.avsReader.GetAVSEpochIdentifier(&bind.CallOpts{}, o.avsAddr.String())
 	startingEpoch := taskInfo.StartingEpoch
 	taskResponsePeriod := taskInfo.TaskResponsePeriod
 	taskStatisticalPeriod := taskInfo.TaskStatisticalPeriod
-	num := startingEpoch + taskResponsePeriod + taskStatisticalPeriod
-
-	var sleepDuration time.Duration
-	switch epochIdentifier {
-	case DayEpochID:
-		sleepDuration = time.Duration(num) * 24 * time.Hour
-	case HourEpochID:
-		sleepDuration = time.Duration(num) * time.Hour
-	case MinuteEpochID:
-		sleepDuration = time.Duration(num) * time.Minute
-	case WeekEpochID:
-		sleepDuration = time.Duration(num) * 7 * 24 * time.Hour
-	default:
-		o.logger.Info("Unknown epoch identifier", "epochIdentifier", epochIdentifier)
-		sleepDuration = time.Minute // Default to a safe short duration
-	}
-
-	time.Sleep(sleepDuration)
-
-	if taskInfo.IsExpected {
-		o.logger.Infof("Task %d is expected. Skipping challenge", task.TaskId)
-		return "", nil
-	}
-	if len(taskInfo.OptInOperators) < 1 {
-		o.logger.Infof("Task %d does not have any optIn operators. Skipping challenge", task.TaskId)
-		return "", nil
-	}
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -354,16 +331,42 @@ func (o *Challenger) TriggerChallege(
 			currentEpoch := uint64(num)
 			// o.logger.Info("current epoch  is :", "currentEpoch", currentEpoch)
 			if currentEpoch > startingEpoch+taskResponsePeriod+taskStatisticalPeriod {
+				// ReQuery the latest taskInfo
+				taskInfo, err = o.avsReader.GetTaskInfo(&bind.CallOpts{}, taskInfo.TaskContractAddress.String(), taskInfo.TaskID)
+				if err != nil {
+					o.logger.Error("Failed to GetTaskInfo", "err", err)
+					return "", nil
+				}
+				o.logger.Info("latest-taskInfo", "taskInfo", taskInfo)
+
+				infos, _ := o.avsReader.GetOperatorTaskResponseList(&bind.CallOpts{}, taskInfo.TaskContractAddress.String(), taskInfo.TaskID)
+				task.TaskAddress = taskInfo.TaskContractAddress
+				task.Infos = infos
+				task.SignedOperators = taskInfo.SignedOperators
+				task.NoSignedOperators = taskInfo.NoSignedOperators
+				task.TaskTotalPower = taskInfo.TaskTotalPower
+
+				if taskInfo.IsExpected {
+					o.logger.Infof("Task %d is expected. Skipping challenge", task.TaskId)
+					return "", nil
+				}
+				if len(taskInfo.OptInOperators) < 1 {
+					o.logger.Infof("Task %d does not have any optIn operators. Skipping challenge", task.TaskId)
+					return "", nil
+				}
+
 				o.logger.Info("Execute raiseAndResolveChallenge", "currentEpoch", currentEpoch,
 					"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod, "taskStatisticalPeriod", taskStatisticalPeriod)
 				_, err := o.avsWriter.Challenge(
 					ctx,
 					task)
 				if err != nil {
-					o.logger.Error("Challeger failed to raiseAndResolveChallenge", "err", err)
+					o.logger.Error("Challenger failed to raiseAndResolveChallenge", "err", err)
 					return "", fmt.Errorf("failed to raiseAndResolveChallenge: %w", err)
 				}
-
+				o.logger.Infof("The current task %s has been challenged:",
+					taskInfo.TaskContractAddress.String()+"--"+strconv.FormatUint(taskInfo.TaskID, 10))
+				return "The current task has been challenged .", nil
 			}
 		}
 	}

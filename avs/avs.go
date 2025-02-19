@@ -23,8 +23,16 @@ import (
 
 const (
 	avsName    = "hello-avs-demo"
-	maxRetries = 20
-	retryDelay = 5 * time.Second
+	maxRetries = 25
+	retryDelay = 6 * time.Second
+	// DayEpochID defines the identifier for a daily epoch.
+	DayEpochID = "day"
+	// HourEpochID defines the identifier for an hourly epoch.
+	HourEpochID = "hour"
+	// MinuteEpochID defines the identifier for an epoch that is a minute long.
+	MinuteEpochID = "minute"
+	// WeekEpochID defines the identifier for a weekly epoch.
+	WeekEpochID = "week"
 )
 
 type Avs struct {
@@ -37,6 +45,7 @@ type Avs struct {
 	taskChallengePeriod   uint64
 	thresholdPercentage   uint8
 	taskStatisticalPeriod uint64
+	avsEpochIdentifier    string
 }
 
 // NewAvs creates a new Avs with the provided config.
@@ -146,6 +155,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		logger.Error("Cannot create exoChainReader", "err", err)
 		return nil, err
 	}
+	// Wait for transaction which avs deployed to be mined
 	time.Sleep(retryDelay)
 	info, err := avsReader.GetAVSEpochIdentifier(&bind.CallOpts{}, c.AVSAddress)
 	if err != nil {
@@ -179,6 +189,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 			return &Avs{}, err
 		}
 	}
+	info, _ = avsReader.GetAVSEpochIdentifier(&bind.CallOpts{}, c.AVSAddress)
 
 	return &Avs{
 		logger:                logger,
@@ -190,6 +201,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		taskChallengePeriod:   c.TaskChallengePeriod,
 		thresholdPercentage:   c.ThresholdPercentage,
 		taskStatisticalPeriod: c.TaskStatisticalPeriod,
+		avsEpochIdentifier:    info,
 	}, nil
 }
 
@@ -244,15 +256,30 @@ func (avs *Avs) sendNewTask() error {
 				"max_attempts", maxRetries)
 		} else {
 			avs.logger.Info("AVS USD value is zero or negative",
-				"value", taskPowerTotal,
+				"avs usd value", taskPowerTotal,
 				"attempt", attempt,
 				"max_attempts", maxRetries)
 		}
 
 		if attempt == maxRetries {
-			// panic("the voting power of AVS is zero or negative")
+			panic("the voting power of AVS is zero or negative")
 		}
-
+		// USD value voting power is updated by epoch for cycle
+		// So we need to wait for an epoch to work and try again,
+		// but we need to make our tests more efficient, so we'll leave it out for now
+		/*var sleepDuration time.Duration
+		switch avs.avsEpochIdentifier {
+		case DayEpochID:
+			sleepDuration = 24 * time.Hour
+		case HourEpochID:
+			sleepDuration = time.Hour
+		case MinuteEpochID:
+			sleepDuration = time.Minute
+		case WeekEpochID:
+			sleepDuration = 7 * 24 * time.Hour
+		}
+				time.Sleep(1 * sleepDuration)
+		*/
 		time.Sleep(retryDelay)
 	}
 

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 
@@ -17,7 +18,7 @@ import (
 
 func main() {
 	app := cli.NewApp()
-	app.Flags = []cli.Flag{config.FileFlag, config.TaskIDFlag, config.NumberToBeSquaredFlag}
+	app.Flags = []cli.Flag{config.FileFlag, config.TaskIDFlag, config.NumberToBeSquaredFlag, config.ExecTypeFlag}
 	app.Name = "hello-world-demo-challenge"
 	app.Usage = "hello-world-demo Challenge"
 	app.Description = "Service that challenger listens to AVS contract events, Initiate challenges and validate the tasks already submitted by the operator."
@@ -49,15 +50,26 @@ func challengeMain(ctx *cli.Context) error {
 		return err
 	}
 	log.Println("initialized challenge")
-	taskID := ctx.Uint64(config.TaskIDFlag.Name)
-	numoBeSquared := ctx.Uint64(config.NumberToBeSquaredFlag.Name)
-	log.Println("starting challenge")
-
-	err = challenger.Exec(context.Background(), taskID, numoBeSquared)
-	if err != nil {
-		return err
+	execType := ctx.Int(config.ExecTypeFlag.Name)
+	if execType == 1 {
+		err = challenger.Start(context.Background())
+		if err != nil {
+			return err
+		}
+		log.Println("challenger started")
 	}
-	log.Println("challenger completed successfully")
-
+	if execType == 2 {
+		taskID := ctx.Uint64(config.TaskIDFlag.Name)
+		numBeSquared := ctx.Uint64(config.NumberToBeSquaredFlag.Name)
+		if taskID == 0 || numBeSquared == 0 {
+			return fmt.Errorf("task ID and Number to be squared must be provided")
+		}
+		log.Println("starting manual challenge")
+		err = challenger.Exec(context.Background(), taskID, numBeSquared)
+		if err != nil {
+			return err
+		}
+		log.Println("challenger completed successfully")
+	}
 	return nil
 }

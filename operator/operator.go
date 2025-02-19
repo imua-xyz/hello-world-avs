@@ -22,19 +22,15 @@ import (
 	blscommon "github.com/prysmaticlabs/prysm/v5/crypto/bls/common"
 	"math/big"
 	"os"
+	"strconv"
+	"time"
 )
 
 const (
-	AvsName = "hello-world-avs-demo"
-	SemVer  = "0.0.1"
-	// DayEpochID defines the identifier for a daily epoch.
-	DayEpochID = "day"
-	// HourEpochID defines the identifier for an hourly epoch.
-	HourEpochID = "hour"
-	// MinuteEpochID defines the identifier for an epoch that is a minute long.
-	MinuteEpochID = "minute"
-	// WeekEpochID defines the identifier for a weekly epoch.
-	WeekEpochID = "week"
+	AvsName    = "hello-world-avs-demo"
+	SemVer     = "0.0.1"
+	maxRetries = 80
+	retryDelay = 1 * time.Second
 )
 
 type Operator struct {
@@ -167,13 +163,10 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	}
 
 	if c.RegisterOperatorOnStartup {
-
-		if err != nil {
-			return nil, err
-		}
 		operator.registerOperatorOnStartup()
 	}
-
+	// Wait for transaction which operator optin avs to be mined
+	time.Sleep(5 * retryDelay)
 	logger.Info("Operator info",
 		"operatorAddr", c.OperatorAddress,
 		"operatorKey", operator.blsKeypair.PublicKey().Marshal(),
@@ -236,29 +229,79 @@ func (o *Operator) Start(ctx context.Context) error {
 	if len(pubKey) == 0 {
 		o.logger.Error("Cannot exec GetRegisteredPubKey", "err", err)
 	}
-	// check operator delegation usd amount
-	amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), o.operatorAddr.String())
-	if err != nil {
-		o.logger.Error("Cannot exec GetOperatorOptedUSDValue", "err", err)
-		return err
-	}
+	// Make sure the amount can be queried
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		// 1.check operator delegation usd amount
+		amount, err := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), o.operatorAddr.String())
+		if err != nil {
+			o.logger.Error("Cannot exec GetOperatorOptedUSDValue", "err", err)
+			return err
+		}
+		if err == nil && !amount.IsZero() && !amount.IsNegative() {
+			break
+		}
+		// 2.Perform Deposit and so on
+		if amount.IsZero() {
+			//deposit and delegate
+			err := o.Deposit()
+			if err != nil {
+				panic(fmt.Sprintf("Can not Deposit: %s", err))
+			}
+			err = o.Delegate()
+			if err != nil {
+				panic(fmt.Sprintf("Can not Delegate: %s", err))
+				return err
+			}
+			err = o.SelfDelegate()
+			if err != nil {
+				panic(fmt.Sprintf("Can not SelfDelegate: %s", err))
+				return err
+			}
+		}
+		// USD value voting power is updated by epoch for cycle
+		// So we need to wait for an epoch to work and try again,
+		// but we need to make our tests more efficient, so we'll wait for an applicable time
+		for attempt := 1; attempt <= maxRetries; attempt++ {
+			amount, lastErr := o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), o.operatorAddr.String())
 
-	if amount.IsZero() {
-		//depoist and delegate
-		err := o.Deposit()
+			if lastErr == nil && !amount.IsZero() && !amount.IsNegative() {
+				break
+			}
+			if lastErr != nil {
+				o.logger.Error("Cannot GetOperatorOptedUSDValue",
+					"err", lastErr,
+					"attempt", attempt,
+					"max_attempts", maxRetries)
+			} else {
+				o.logger.Info("OperatorOptedUSDValue is zero or negative",
+					"operator usd value", amount,
+					"attempt", attempt,
+					"max_attempts", maxRetries)
+			}
+			time.Sleep(retryDelay)
+		}
+		// 3.After checking the above maxRetries times ,check operator delegation usd amount again
+		amount, err = o.avsReader.GetOperatorOptedUSDValue(&bind.CallOpts{}, o.avsAddr.String(), o.operatorAddr.String())
 		if err != nil {
-			o.logger.Error("Cannot Deposit", "err", err)
+			o.logger.Error("Cannot exec GetOperatorOptedUSDValue", "err", err)
 			return err
 		}
-		err = o.Delegate()
-		if err != nil {
-			o.logger.Error("Cannot Delegate", "err", err)
-			return err
-		}
-		err = o.SelfDelegate()
-		if err != nil {
-			o.logger.Error("Cannot SelfDelegate", "err", err)
-			return err
+		if amount.IsZero() {
+			//deposit and delegate
+			err := o.Deposit()
+			if err != nil {
+				panic(fmt.Sprintf("Can not Deposit: %s", err))
+			}
+			err = o.Delegate()
+			if err != nil {
+				panic(fmt.Sprintf("Can not Delegate: %s", err))
+				return err
+			}
+			err = o.SelfDelegate()
+			if err != nil {
+				panic(fmt.Sprintf("Can not SelfDelegate: %s", err))
+				return err
+			}
 		}
 	}
 	o.logger.Infof("Starting operator.")
@@ -336,11 +379,17 @@ func (o *Operator) GetLog(height int64) error {
 		for _, vLog := range logs {
 			data := vLog.Data
 
-			eventArgs, err := event.Inputs.Unpack(data)
-			if err != nil {
+			eventArgs, _ := event.Inputs.Unpack(data)
+
+			o.logger.Info("parse logs",
+				"data", data,
+				"height", height,
+				"event", event.Inputs)
+
+			/*if err != nil {
 				o.logger.Error("Failed to unpack event inputs", "err", err)
 				return err
-			}
+			}*/
 			if eventArgs != nil {
 				taskResponse := o.ProcessNewTaskCreatedLog(eventArgs)
 				sig, resBytes, err := o.SignTaskResponse(taskResponse)
@@ -419,8 +468,9 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 			currentEpoch := uint64(num)
 			// o.logger.Info("current epoch  is :", "currentEpoch", currentEpoch)
 			if currentEpoch > startingEpoch+taskResponsePeriod+taskStatisticalPeriod {
-				o.logger.Info("Exiting loop: Task period has passed")
-				return "Task period has passed", nil
+				o.logger.Info("Exiting loop: Task period has passed",
+					"Task", taskInfo.TaskContractAddress.String()+"--"+strconv.FormatUint(taskId, 10))
+				return "The current task period has passed:", nil
 			}
 
 			switch {

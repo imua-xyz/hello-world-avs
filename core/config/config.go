@@ -49,14 +49,19 @@ var (
 		EnvVar:   "ECDSA_PRIVATE_KEY",
 	}
 	/* Optional Flags */
-	TaskIDFlag = &cli.IntFlag{
+	TaskIDFlag = &cli.Uint64Flag{
 		Name:     "task-ID",
 		Usage:    "task ID",
-		Required: true,
+		Required: false,
 	}
-	NumberToBeSquaredFlag = &cli.StringFlag{
+	NumberToBeSquaredFlag = &cli.Uint64Flag{
 		Name:     "NumberToBeSquared",
 		Usage:    "number to be squared",
+		Required: false,
+	}
+	ExecTypeFlag = &cli.IntFlag{
+		Name:     "ExecType",
+		Usage:    "Execution type: If the input is 1, then automatic execution, if it is 2, then manual execution",
 		Required: true,
 	}
 )
