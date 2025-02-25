@@ -1,0 +1,19 @@
+# this sets the logger level (true = info, false = debug)
+production: false
+#The eoa address of Operato, used for sending transactions
+operator_address: 0x3e108c058e8066da635321dc3018294ca82ddedf
+#Addresses of deployed AVS contract
+avs_address: 0x10Ed22D975453A5D4031440D51624552E4f204D5
+# ETH RPC URL
+eth_rpc_url: http://127.0.0.1:8545
+eth_ws_url: ws://127.0.0.1:8546
+operator_ecdsa_private_key_store_path: tests/keys/operator1.ecdsa.key.json
+bls_private_key_store_path: tests/keys/bls1.key.json
+node_api_ip_port_address: 0.0.0.0:9010
+enable_node_api: false
+register_operator_on_startup: true
+
+# depoist and delegate params
+deposit_amount: 100
+delegate_amount: 100
+staker: 0xa53f68563D22EB0dAFAA871b6C08a6852f91d627

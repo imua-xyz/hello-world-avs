@@ -24,6 +24,7 @@ import (
 	"math/big"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -109,7 +110,8 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	if err != nil {
 		panic(err)
 	}
-	logger.Info("operatorSender:", "operatorSender", operatorSender.String())
+	logger.Info("OperatorAddress:", "OperatorAddress", strings.ToLower(c.OperatorAddress))
+	logger.Info("operatorSender:", "operatorSender", strings.ToLower(operatorSender.String()))
 
 	balance, err := ethRpcClient.BalanceAt(context.Background(), operatorSender, nil)
 	if err != nil {
@@ -118,7 +120,7 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	if balance.Cmp(big.NewInt(0)) != 1 {
 		logger.Error("operatorSender has not enough Balance")
 	}
-	if c.OperatorAddress != operatorSender.String() {
+	if strings.ToLower(c.OperatorAddress) != strings.ToLower(operatorSender.String()) {
 		logger.Error("operatorSender is not equal OperatorAddress")
 	}
 	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, common.HexToAddress(c.OperatorAddress))
