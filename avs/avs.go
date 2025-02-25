@@ -18,6 +18,7 @@ import (
 	"math/big"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -49,7 +50,7 @@ type Avs struct {
 }
 
 // NewAvs creates a new Avs with the provided config.
-func NewAvs(c *types.NodeConfig) (*Avs, error) {
+func NewAvs(c *types.NodeConfig, configPath string) (*Avs, error) {
 	var logLevel sdklogging.LogLevel
 	if c.Production {
 		logLevel = sdklogging.Production
@@ -94,7 +95,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 	if balance.Cmp(big.NewInt(0)) != 1 {
 		logger.Error("avsSender has not enough Balance")
 	}
-	if c.AVSOwnerAddress != avsSender.String() {
+	if strings.ToLower(c.AVSOwnerAddress) != strings.ToLower(avsSender.String()) {
 		logger.Error("avsSender is not equal AVSOwnerAddress")
 	}
 	code, err := ethRpcClient.CodeAt(context.Background(), common.HexToAddress(c.AVSAddress), nil)
@@ -121,7 +122,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		c.TaskAddress = avsAddr.String()
 		c.AVSRewardAddress = avsAddr.String()
 		c.AVSSlashAddress = avsAddr.String()
-		filePath, err := core.GetFileInCurrentDirectory("config.yaml")
+		filePath, err := core.GetFileInCurrentDirectory(configPath)
 		if err != nil {
 			panic(err)
 		}

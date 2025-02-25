@@ -1,0 +1,40 @@
+# this sets the logger level (true = info, false = debug)
+production: false
+#The eoa address of avs owner, used for sending transactions
+avs_owner_address: 0xd724e14bde078a36bdd88c84a40761dd956207d4
+#Address of deployed AVS contract
+avs_address: 0xb26f65C0Ca364509a66CB6994e0CE4de2192771c
+# ETH RPC URL
+eth_rpc_url: http://127.0.0.1:8545
+eth_ws_url: ws://localhost:8546
+avs_ecdsa_private_key_store_path: tests/keys/avs3.ecdsa.key.json
+node_api_ip_port_address: 0.0.0.0:9010
+enable_node_api: false
+#register avs parameters
+avs_name: "hello-avs"
+min_stake_amount: 1
+avs_owner_addresses:
+  - "0xd724e14bde078a36bdd88c84a40761dd956207d4"
+  - "0x3e108c058e8066DA635321Dc3018294cA82ddEdf"
+whitelist_addresses:
+  - "0xd724e14bde078a36bdd88c84a40761dd956207d4"
+  - "0x3e108c058e8066DA635321Dc3018294cA82ddEdf"
+asset_ids:
+  - "0xdac17f958d2ee523a2206206994597c13d831ec7_0x65"
+avs_unbonding_period: 7
+min_self_delegation: 0
+epoch_identifier: minute
+avs_reward_address: 0xb26f65C0Ca364509a66CB6994e0CE4de2192771c
+avs_slash_address: 0xb26f65C0Ca364509a66CB6994e0CE4de2192771c
+task_address: 0xb26f65C0Ca364509a66CB6994e0CE4de2192771c
+mini_opt_in_operators: 3
+min_total_stake_amount: 3
+avs_reward_proportion: 3
+avs_slash_proportion: 3
+#create new task parameters
+#Create task intervals,Unit second
+create_task_interval: 100
+task_response_period: 3
+task_challenge_period: 3
+threshold_percentage: 100
+task_statistical_period: 3

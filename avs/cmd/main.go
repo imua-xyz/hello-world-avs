@@ -51,7 +51,7 @@ func avsMain(ctx *cli.Context) error {
 
 	log.Println("initializing avs")
 
-	agg, err := avs.NewAvs(&nodeConfig)
+	agg, err := avs.NewAvs(&nodeConfig, configPath)
 	if err != nil {
 		return err
 	}

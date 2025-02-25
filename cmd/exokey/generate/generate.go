@@ -171,7 +171,7 @@ func generateBlsKeys(numKeys int, path string, passwordFile, privateKeyFile *os.
 			return err
 		}
 
-		password := generateRandomPassword()
+		password := ""
 		if err != nil {
 			return err
 		}
@@ -218,7 +218,7 @@ func generateECDSAKeys(numKeys int, path string, passwordFile, privateKeyFile *o
 			return err
 		}
 
-		password := generateRandomPassword()
+		password := ""
 		if err != nil {
 			return err
 		}
