@@ -2,8 +2,10 @@ package core
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/cosmos/btcutil/bech32"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -166,4 +168,19 @@ func ConvertToEthAddresses(strArray []string) []common.Address {
 	}
 
 	return ethAddresses
+}
+func SwitchEthAddressToImAddress(ethAddress string) (string, error) {
+	b, err := hex.DecodeString(ethAddress[2:])
+	if err != nil {
+		return "", fmt.Errorf("failed to decode eth address: %w", err)
+	}
+
+	// Generate im address
+	bech32Prefix := "im"
+	imAddress, err := bech32.EncodeFromBase256(bech32Prefix, b)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode exo address: %w", err)
+	}
+
+	return imAddress, nil
 }

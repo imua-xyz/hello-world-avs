@@ -2,7 +2,6 @@ package operator
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	avs "github.com/ExocoreNetwork/exocore-avs/contracts/bindings/avs"
 	"github.com/ExocoreNetwork/exocore-avs/core"
@@ -14,7 +13,6 @@ import (
 	sdklogging "github.com/ExocoreNetwork/exocore-sdk/logging"
 	"github.com/ExocoreNetwork/exocore-sdk/nodeapi"
 	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
-	"github.com/cosmos/btcutil/bech32"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -187,7 +185,7 @@ func (o *Operator) Start(ctx context.Context) error {
 	// 4.operator register BLSPublicKey
 	// 5.operator submit task
 
-	operatorAddress, err := SwitchEthAddressToExoAddress(o.operatorAddr.String())
+	operatorAddress, err := core.SwitchEthAddressToImAddress(o.operatorAddr.String())
 	if err != nil {
 		o.logger.Error("Cannot switch eth address to exo address", "err", err)
 		panic(err)
@@ -500,20 +498,4 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 			// }
 		}
 	}
-}
-
-func SwitchEthAddressToExoAddress(ethAddress string) (string, error) {
-	b, err := hex.DecodeString(ethAddress[2:])
-	if err != nil {
-		return "", fmt.Errorf("failed to decode eth address: %w", err)
-	}
-
-	// Generate exo address
-	HRP := "exo"
-	exoAddress, err := bech32.EncodeFromBase256(HRP, b)
-	if err != nil {
-		return "", fmt.Errorf("failed to encode exo address: %w", err)
-	}
-
-	return exoAddress, nil
 }
