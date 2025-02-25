@@ -94,15 +94,13 @@ contract AvsServiceContract {
     function registerBLSPublicKey(
         address  avsAddr,
         bytes memory pubKey,
-        bytes memory pubKeyRegistrationSignature,
-        bytes memory pubKeyRegistrationMessageHash
+        bytes memory pubKeyRegistrationSignature
     ) public returns (bool) {
         bool success = avs.AVSMANAGER_CONTRACT.registerBLSPublicKey(
             msg.sender,
             avsAddr,
             pubKey,
-            pubKeyRegistrationSignature,
-            pubKeyRegistrationMessageHash
+            pubKeyRegistrationSignature
         );
         return success;
     }
@@ -165,7 +163,7 @@ contract AvsServiceContract {
     function raiseAndResolveChallenge(
         ChallengeReq memory req
     ) public returns (bool) {
-        
+
         uint64 taskID = req.taskId;
         require(req.infos.length>0, "taskResponse length must be greater than 0");
         uint256 totalApprovedPower;

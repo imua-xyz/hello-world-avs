@@ -187,7 +187,7 @@ func (o *Operator) Start(ctx context.Context) error {
 
 	operatorAddress, err := core.SwitchEthAddressToImAddress(o.operatorAddr.String())
 	if err != nil {
-		o.logger.Error("Cannot switch eth address to exo address", "err", err)
+		o.logger.Error("Cannot switch eth address to im address", "err", err)
 		panic(err)
 	}
 
@@ -209,14 +209,16 @@ func (o *Operator) Start(ctx context.Context) error {
 
 	if len(pubKey) == 0 {
 		// operator register BLSPublicKey  via evm tx
-		msgBytes := crypto.Keccak256Hash([]byte("hello-avs")).Bytes()
-		sig := o.blsKeypair.Sign(msgBytes)
+		msg := fmt.Sprintf(core.BLSMessageToSign,
+			core.ChainIDWithoutRevision("imuachainlocalnet_232"), operatorAddress)
+		hashedMsg := crypto.Keccak256Hash([]byte(msg))
+		sig := o.blsKeypair.Sign(hashedMsg.Bytes())
+
 		_, err = o.avsWriter.RegisterBLSPublicKey(
 			context.Background(),
 			o.avsAddr.String(),
 			o.blsKeypair.PublicKey().Marshal(),
-			sig.Marshal(),
-			msgBytes)
+			sig.Marshal())
 
 		if err != nil {
 			o.logger.Error("operator failed to registerBLSPublicKey", "err", err)

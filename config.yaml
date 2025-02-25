@@ -5,7 +5,7 @@ operator_address: 0x3e108c058e8066DA635321Dc3018294cA82ddEdf
 #The eoa address of avs owner, used for sending transactions
 avs_owner_address: 0x4b99E597121C99ba5846c32bd49d8A4B95457f8C
 #Address of deployed AVS contract
-avs_address: 0x10Ed22D975453A5D4031440D51624552E4f204D5
+avs_address: 0xf358Ff4490bE516e292Ee0c2D6F442cA7b252A29
 # ETH RPC URL
 eth_rpc_url: http://127.0.0.1:8545
 eth_ws_url: ws://localhost:8546

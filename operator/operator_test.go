@@ -11,12 +11,29 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/prysmaticlabs/prysm/v5/crypto/bls/blst"
 	"log"
 	"math/big"
 	"testing"
 	"time"
 )
 
+func TestAbi3(t *testing.T) {
+	// BLS12-381 Signed Message
+	//ChainIDWithoutRevision: imuachainlocalnet_232
+	//AccAddressBech32: im16tltge7d4yr0wtkr7ut6dwwnqgnwm2ge63djdp
+	privateKey, _ := blst.RandKey()
+	msg := fmt.Sprintf(core.BLSMessageToSign,
+		core.ChainIDWithoutRevision("imuachainlocalnet_232-1"), "im16tltge7d4yr0wtkr7ut6dwwnqgnwm2ge63djdp")
+
+	hashedMsg := crypto.Keccak256Hash([]byte(msg))
+	sig := privateKey.Sign(hashedMsg.Bytes())
+	fmt.Println(msg)
+
+	fmt.Println(hexutil.Encode(privateKey.PublicKey().Marshal()))
+	fmt.Println(hexutil.Encode(sig.Marshal()))
+
+}
 func TestAbi(t *testing.T) {
 
 	task := core.TaskResponse{

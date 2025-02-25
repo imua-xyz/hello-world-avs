@@ -13,6 +13,8 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 )
 
 var (
@@ -30,6 +32,8 @@ type TaskResponse struct {
 	TaskID        uint64
 	NumberSquared uint64
 }
+
+const BLSMessageToSign = "BLS12-381 Signed Message\nChainIDWithoutRevision: %s\nAccAddressBech32: %s"
 
 func AbiEncode(resp TaskResponse) ([]byte, error) {
 
@@ -184,3 +188,15 @@ func SwitchEthAddressToImAddress(ethAddress string) (string, error) {
 
 	return imAddress, nil
 }
+
+// ChainIDWithoutRevision returns the chainID without the revision number.
+// For example, "imuachaintestnet_233-1" returns "imuachaintestnet_233".
+func ChainIDWithoutRevision(chainID string) string {
+	if !IsRevisionFormat(chainID) {
+		return chainID
+	}
+	splitStr := strings.Split(chainID, "-")
+	return splitStr[0]
+}
+
+var IsRevisionFormat = regexp.MustCompile(`^.*[^\n-]-{1}[1-9][0-9]*$`).MatchString

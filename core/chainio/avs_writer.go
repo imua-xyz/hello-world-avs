@@ -25,7 +25,6 @@ type ExoWriter interface {
 		avsAddr string,
 		pubKey []byte,
 		pubKeyRegistrationSignature []byte,
-		pubKeyRegistrationMessageHash []byte,
 	) (*gethtypes.Receipt, error)
 
 	CreateNewTask(
@@ -139,7 +138,6 @@ func (w *ExoChainWriter) RegisterBLSPublicKey(
 	avsAddr string,
 	pubKey []byte,
 	pubKeyRegistrationSignature []byte,
-	pubKeyRegistrationMessageHash []byte,
 ) (*gethtypes.Receipt, error) {
 	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()
 	if err != nil {
@@ -149,8 +147,7 @@ func (w *ExoChainWriter) RegisterBLSPublicKey(
 		noSendTxOpts,
 		gethcommon.HexToAddress(avsAddr),
 		pubKey,
-		pubKeyRegistrationSignature,
-		pubKeyRegistrationMessageHash)
+		pubKeyRegistrationSignature)
 	if err != nil {
 		return nil, err
 	}
