@@ -286,6 +286,8 @@ func (o *Challenger) TriggerChallenge(
 
 				o.logger.Info("Execute raiseAndResolveChallenge", "currentEpoch", currentEpoch,
 					"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod, "taskStatisticalPeriod", taskStatisticalPeriod)
+				o.logger.Info("Challenge-task-req", "task", task)
+
 				_, err := o.avsWriter.Challenge(
 					ctx,
 					task)

@@ -2,6 +2,7 @@ package operator_test
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	avs "github.com/ExocoreNetwork/exocore-avs/contracts/bindings/avs"
@@ -18,7 +19,21 @@ import (
 	"time"
 )
 
-func TestAbi3(t *testing.T) {
+func TestDecodeRes(t *testing.T) {
+
+	base64Str := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQg=="
+	data, err := base64.StdEncoding.DecodeString(base64Str)
+	if err != nil {
+		fmt.Println("Error decoding Base64:", err)
+		return
+	}
+
+	hexStr := "0x" + hex.EncodeToString(data)
+
+	fmt.Println("Hexadecimal format:", hexStr)
+}
+
+func TestBlsSig(t *testing.T) {
 	// BLS12-381 Signed Message
 	//ChainIDWithoutRevision: imuachainlocalnet_232
 	//AccAddressBech32: im16tltge7d4yr0wtkr7ut6dwwnqgnwm2ge63djdp

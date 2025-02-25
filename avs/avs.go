@@ -211,7 +211,8 @@ func (avs *Avs) Start(ctx context.Context) error {
 	avs.logger.Infof("Avs owner set to send new task every %d seconds", avs.createTaskInterval)
 	defer ticker.Stop()
 	taskNum := int64(1)
-	// send the first task
+	// Wait for the operator process to prepare work, such as deposit delegation, before sending the task
+	time.Sleep(20 * time.Second)
 	err := avs.sendNewTask()
 	if err != nil {
 		// we log the errors inside sendNewTask() so here we just continue to do the next task

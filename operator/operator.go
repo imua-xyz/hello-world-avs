@@ -372,9 +372,10 @@ func (o *Operator) parseEvent(vLog ethtypes.Log) (interface{}, error) {
 func (o *Operator) ProcessNewTaskCreatedLog(e *avs.ContracthelloWorldTaskCreated) *core.TaskResponse {
 	o.logger.Info("New Task Created", "TaskID", e.TaskId.Uint64(),
 		"Issuer", e.Issuer.String(), "Name", e.Name, "NumberToBeSquared", e.NumberToBeSquared)
+	// Perform multiplication to complete the task requirements
 	taskResponse := &core.TaskResponse{
 		TaskID:        e.TaskId.Uint64(),
-		NumberSquared: e.NumberToBeSquared,
+		NumberSquared: e.NumberToBeSquared * e.NumberToBeSquared,
 	}
 	return taskResponse
 }
@@ -450,6 +451,9 @@ func (o *Operator) SendSignedTaskResponseToExocore(
 					o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
 					return "", fmt.Errorf("failed to submit task during taskResponsePeriod: %w", err)
 				}
+				// Wait for transaction which operator submit task to be mined
+				//	Avoid err: invalid nonce,invalid sequence,got x, expected y
+				// time.Sleep(2 * time.Second)
 
 			case currentEpoch <= startingEpoch+taskResponsePeriod+taskStatisticalPeriod && currentEpoch > startingEpoch+taskResponsePeriod:
 				o.logger.Info("Execute Phase Two Submission Task", "currentEpoch", currentEpoch,
