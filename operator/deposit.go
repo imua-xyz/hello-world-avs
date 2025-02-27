@@ -5,7 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
-	"github.com/ExocoreNetwork/exocore-avs/core"
+	"github.com/imua-xyz/imua-avs/core"
 	"math/big"
 	"strings"
 	"time"

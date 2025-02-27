@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	key "github.com/ExocoreNetwork/exocore-avs/cmd/exokey/import"
+	key "github.com/imua-xyz/imua-avs/cmd/exokey/import"
 )
 
 const (

@@ -8,9 +8,9 @@ import (
 
 	"github.com/urfave/cli"
 
-	"github.com/ExocoreNetwork/exocore-avs/core/config"
-	"github.com/ExocoreNetwork/exocore-avs/operator"
-	"github.com/ExocoreNetwork/exocore-avs/types"
+	"github.com/imua-xyz/imua-avs/core/config"
+	"github.com/imua-xyz/imua-avs/operator"
+	"github.com/imua-xyz/imua-avs/types"
 
 	sdkutils "github.com/ExocoreNetwork/exocore-sdk/utils"
 )

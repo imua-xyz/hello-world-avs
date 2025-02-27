@@ -1,4 +1,4 @@
-module github.com/ExocoreNetwork/exocore-avs
+module github.com/imua-xyz/imua-avs
 
 go 1.23.0
 

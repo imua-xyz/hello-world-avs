@@ -3,8 +3,8 @@ package challenge_test
 import (
 	"context"
 	"fmt"
-	"github.com/ExocoreNetwork/exocore-avs/core/chainio/eth"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/imua-xyz/imua-avs/core/chainio/eth"
 	"log"
 	"testing"
 	"time"

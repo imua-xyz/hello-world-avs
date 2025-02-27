@@ -1,11 +1,11 @@
 package chainio
 
 import (
-	"github.com/ExocoreNetwork/exocore-avs/core/chainio/eth"
 	"github.com/ExocoreNetwork/exocore-sdk/chainio/txmgr"
 	"github.com/ExocoreNetwork/exocore-sdk/logging"
 	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/imua-xyz/imua-avs/core/chainio/eth"
 )
 
 type BuildAllConfig struct {

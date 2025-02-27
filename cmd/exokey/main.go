@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/ExocoreNetwork/exocore-avs/cmd/exokey/generate"
+	"github.com/imua-xyz/imua-avs/cmd/exokey/generate"
 	"os"
 
-	"github.com/ExocoreNetwork/exocore-avs/cmd/exokey/import"
+	"github.com/imua-xyz/imua-avs/cmd/exokey/import"
 	"github.com/urfave/cli/v2"
 )
 

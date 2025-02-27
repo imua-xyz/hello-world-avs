@@ -5,9 +5,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 
-	avssub "github.com/ExocoreNetwork/exocore-avs/contracts/bindings/avs"
-	"github.com/ExocoreNetwork/exocore-avs/core/chainio/eth"
 	"github.com/ExocoreNetwork/exocore-sdk/logging"
+	avssub "github.com/imua-xyz/imua-avs/contracts/bindings/avs"
+	"github.com/imua-xyz/imua-avs/core/chainio/eth"
 )
 
 type AvsRegistrySubscriber interface {

@@ -4,15 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ExocoreNetwork/exocore-avs/types"
 	sdkutils "github.com/ExocoreNetwork/exocore-sdk/utils"
+	"github.com/imua-xyz/imua-avs/types"
 	"log"
 	"os"
 
 	"github.com/urfave/cli"
 
-	"github.com/ExocoreNetwork/exocore-avs/avs"
-	"github.com/ExocoreNetwork/exocore-avs/core/config"
+	"github.com/imua-xyz/imua-avs/avs"
+	"github.com/imua-xyz/imua-avs/core/config"
 )
 
 var (

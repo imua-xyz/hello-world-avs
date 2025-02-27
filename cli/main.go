@@ -4,8 +4,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/ExocoreNetwork/exocore-avs/cli/actions"
-	"github.com/ExocoreNetwork/exocore-avs/core/config"
+	"github.com/imua-xyz/imua-avs/cli/actions"
+	"github.com/imua-xyz/imua-avs/core/config"
 	"github.com/urfave/cli"
 )
 

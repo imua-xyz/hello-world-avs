@@ -1,7 +1,7 @@
 package avs_test
 
 import (
-	"github.com/ExocoreNetwork/exocore-avs/core"
+	"github.com/imua-xyz/imua-avs/core"
 	"gopkg.in/yaml.v3"
 	"log"
 	"os"

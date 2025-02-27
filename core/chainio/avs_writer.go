@@ -4,13 +4,13 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
-	avs "github.com/ExocoreNetwork/exocore-avs/contracts/bindings/avs"
-	"github.com/ExocoreNetwork/exocore-avs/core/chainio/eth"
 	"github.com/ExocoreNetwork/exocore-sdk/chainio/txmgr"
 	"github.com/ExocoreNetwork/exocore-sdk/logging"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
+	avs "github.com/imua-xyz/imua-avs/contracts/bindings/avs"
+	"github.com/imua-xyz/imua-avs/core/chainio/eth"
 	"math/big"
 )
 

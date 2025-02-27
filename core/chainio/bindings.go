@@ -4,8 +4,8 @@ import (
 	"github.com/ExocoreNetwork/exocore-sdk/logging"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
-	avs "github.com/ExocoreNetwork/exocore-avs/contracts/bindings/avs"
-	"github.com/ExocoreNetwork/exocore-avs/core/chainio/eth"
+	avs "github.com/imua-xyz/imua-avs/contracts/bindings/avs"
+	"github.com/imua-xyz/imua-avs/core/chainio/eth"
 )
 
 type ExocoreContractBindings struct {
