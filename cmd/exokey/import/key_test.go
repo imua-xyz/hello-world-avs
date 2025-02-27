@@ -3,9 +3,9 @@ package _import_test
 import (
 	"encoding/hex"
 	"fmt"
-	sdkBls "github.com/ExocoreNetwork/exocore-sdk/crypto/bls"
-	sdkEcdsa "github.com/ExocoreNetwork/exocore-sdk/crypto/ecdsa"
 	"github.com/ethereum/go-ethereum/common"
+	sdkBls "github.com/imua-xyz/imuachain-sdk/crypto/bls"
+	sdkEcdsa "github.com/imua-xyz/imuachain-sdk/crypto/ecdsa"
 	"strings"
 
 	"github.com/prysmaticlabs/prysm/v5/crypto/bls/blst"

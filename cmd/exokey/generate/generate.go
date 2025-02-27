@@ -12,10 +12,10 @@ import (
 	"path/filepath"
 	"time"
 
-	utils "github.com/ExocoreNetwork/exocore-sdk/crypto/bls"
-	"github.com/ExocoreNetwork/exocore-sdk/crypto/ecdsa"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
+	utils "github.com/imua-xyz/imuachain-sdk/crypto/bls"
+	"github.com/imua-xyz/imuachain-sdk/crypto/ecdsa"
 	"github.com/urfave/cli/v2"
 )
 

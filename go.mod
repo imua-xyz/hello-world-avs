@@ -4,10 +4,10 @@ go 1.23.0
 
 require (
 	cosmossdk.io/math v1.2.0
-	github.com/ExocoreNetwork/exocore-sdk v0.0.0-20250207082047-175c78786dd2
 	github.com/cosmos/btcutil v1.0.5
 	github.com/ethereum/go-ethereum v1.15.0
 	github.com/google/uuid v1.6.0
+	github.com/imua-xyz/imuachain-sdk v1.0.0
 	github.com/prysmaticlabs/prysm/v5 v5.2.0
 	github.com/urfave/cli v1.22.14
 	github.com/urfave/cli/v2 v2.26.0
@@ -51,28 +51,18 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.26.0 // indirect
 	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa // indirect
-	golang.org/x/sys v0.24.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
 replace (
-	// use cosmos fork of keyring
-	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
-	// use Cosmos-SDK fork to enable Ledger functionality
-	github.com/cosmos/cosmos-sdk => github.com/evmos/cosmos-sdk v0.47.5-evmos.2
-
-	//fix cosmos-sdk error
-	github.com/cosmos/gogoproto => github.com/cosmos/gogoproto v1.4.10
 	// use Evmos geth fork
 	github.com/ethereum/go-ethereum => github.com/evmos/go-ethereum v1.10.26-evmos-rc2
-	// use exocore fork of evmos TODO
-	github.com/evmos/evmos/v16 => github.com/ExocoreNetwork/evmos/v16 v16.0.3-0.20240828081344-d5cfcd34a812
-	// Security Advisory https://github.com/advisories/GHSA-h395-qcrw-5vmq
-	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.9.1
 	// replace broken goleveldb
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	//fix cosmos-sdk error
 	golang.org/x/exp => golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc
+
 )

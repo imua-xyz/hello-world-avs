@@ -1,8 +1,8 @@
 package chainio
 
 import (
-	"github.com/ExocoreNetwork/exocore-sdk/logging"
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/imua-xyz/imuachain-sdk/logging"
 
 	avs "github.com/imua-xyz/imua-avs/contracts/bindings/avs"
 	"github.com/imua-xyz/imua-avs/core/chainio/eth"

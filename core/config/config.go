@@ -5,10 +5,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/urfave/cli"
 
-	"github.com/ExocoreNetwork/exocore-sdk/chainio/txmgr"
-	sdklogging "github.com/ExocoreNetwork/exocore-sdk/logging"
-	"github.com/ExocoreNetwork/exocore-sdk/signerv2"
 	"github.com/imua-xyz/imua-avs/core/chainio/eth"
+	"github.com/imua-xyz/imuachain-sdk/client/txmgr"
+	sdklogging "github.com/imua-xyz/imuachain-sdk/logging"
+	"github.com/imua-xyz/imuachain-sdk/signerv2"
 
 	blscommon "github.com/prysmaticlabs/prysm/v5/crypto/bls/common"
 )

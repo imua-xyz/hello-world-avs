@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	sdkutils "github.com/ExocoreNetwork/exocore-sdk/utils"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -12,6 +11,7 @@ import (
 	avs "github.com/imua-xyz/imua-avs/contracts/bindings/avs"
 	"github.com/imua-xyz/imua-avs/core/config"
 	"github.com/imua-xyz/imua-avs/types"
+	sdkutils "github.com/imua-xyz/imuachain-sdk/utils"
 	"log"
 
 	"github.com/urfave/cli"

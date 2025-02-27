@@ -2,11 +2,11 @@ package chainio
 
 import (
 	sdkmath "cosmossdk.io/math"
-	"github.com/ExocoreNetwork/exocore-sdk/logging"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	avs "github.com/imua-xyz/imua-avs/contracts/bindings/avs"
 	"github.com/imua-xyz/imua-avs/core/chainio/eth"
+	"github.com/imua-xyz/imuachain-sdk/logging"
 )
 
 type ExoReader interface {

@@ -5,10 +5,10 @@ import (
 	"github.com/urfave/cli"
 	"log"
 
-	sdkutils "github.com/ExocoreNetwork/exocore-sdk/utils"
 	"github.com/imua-xyz/imua-avs/core/config"
 	"github.com/imua-xyz/imua-avs/operator"
 	"github.com/imua-xyz/imua-avs/types"
+	sdkutils "github.com/imua-xyz/imuachain-sdk/utils"
 )
 
 func RegisterOperatorWithExocore(ctx *cli.Context) error {

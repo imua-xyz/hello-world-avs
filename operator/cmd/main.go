@@ -12,7 +12,7 @@ import (
 	"github.com/imua-xyz/imua-avs/operator"
 	"github.com/imua-xyz/imua-avs/types"
 
-	sdkutils "github.com/ExocoreNetwork/exocore-sdk/utils"
+	sdkutils "github.com/imua-xyz/imuachain-sdk/utils"
 )
 
 func main() {
