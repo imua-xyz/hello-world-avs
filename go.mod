@@ -7,7 +7,7 @@ require (
 	github.com/cosmos/btcutil v1.0.5
 	github.com/ethereum/go-ethereum v1.15.0
 	github.com/google/uuid v1.6.0
-	github.com/imua-xyz/imuachain-sdk v1.0.0
+	github.com/imua-xyz/imua-avs-sdk v0.0.1
 	github.com/prysmaticlabs/prysm/v5 v5.2.0
 	github.com/urfave/cli v1.22.14
 	github.com/urfave/cli/v2 v2.26.0
@@ -26,7 +26,7 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
-	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -40,7 +40,7 @@ require (
 	github.com/rjeczalik/notify v0.9.3 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/supranational/blst v0.3.11 // indirect
 	github.com/thomaso-mirodin/intmath v0.0.0-20160323211736-5dc6d854e46e // indirect
 	github.com/tklauser/go-sysconf v0.3.13 // indirect

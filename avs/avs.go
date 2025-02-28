@@ -5,16 +5,16 @@ import (
 	sdkmath "cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/imua-xyz/imua-avs-sdk/client/txmgr"
+	sdkEcdsa "github.com/imua-xyz/imua-avs-sdk/crypto/ecdsa"
+	"github.com/imua-xyz/imua-avs-sdk/logging"
+	sdklogging "github.com/imua-xyz/imua-avs-sdk/logging"
+	"github.com/imua-xyz/imua-avs-sdk/signer"
 	avs "github.com/imua-xyz/imua-avs/contracts/bindings/avs"
 	"github.com/imua-xyz/imua-avs/core"
 	chain "github.com/imua-xyz/imua-avs/core/chainio"
 	"github.com/imua-xyz/imua-avs/core/chainio/eth"
 	"github.com/imua-xyz/imua-avs/types"
-	"github.com/imua-xyz/imuachain-sdk/client/txmgr"
-	sdkEcdsa "github.com/imua-xyz/imuachain-sdk/crypto/ecdsa"
-	"github.com/imua-xyz/imuachain-sdk/logging"
-	sdklogging "github.com/imua-xyz/imuachain-sdk/logging"
-	"github.com/imua-xyz/imuachain-sdk/signerv2"
 	"math/big"
 	"math/rand"
 	"os"
@@ -37,8 +37,8 @@ const (
 
 type Avs struct {
 	logger                logging.Logger
-	avsWriter             chain.ExoWriter
-	avsReader             chain.ExoReader
+	avsWriter             chain.AvsWriter
+	avsReader             chain.AvsReader
 	avsAddress            string
 	createTaskInterval    int64
 	taskResponsePeriod    uint64
@@ -77,7 +77,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		logger.Info("AVS_ECDSA_KEY_PASSWORD env var not set. using empty string")
 	}
 
-	signerV2, avsSender, err := signerv2.SignerFromConfig(signerv2.Config{
+	signer, avsSender, err := signer.SignerFromConfig(signer.Config{
 		KeystorePath: c.AVSEcdsaPrivateKeyStorePath,
 		Password:     ecdsaKeyPassword,
 	}, chainId)
@@ -136,8 +136,8 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		}
 	}
 
-	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, avsSender)
-	avsWriter, err := chain.BuildExoChainWriter(
+	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signer, avsSender)
+	avsWriter, err := chain.BuildChainWriter(
 		common.HexToAddress(c.AVSAddress),
 		ethRpcClient,
 		logger,
@@ -147,12 +147,12 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 		return nil, err
 	}
 
-	avsReader, err := chain.BuildExoChainReader(
+	avsReader, err := chain.BuildChainReader(
 		common.HexToAddress(c.AVSAddress),
 		ethRpcClient,
 		logger)
 	if err != nil {
-		logger.Error("Cannot create exoChainReader", "err", err)
+		logger.Error("Cannot create chainReader", "err", err)
 		return nil, err
 	}
 	// Wait for transaction which avs deployed to be mined
@@ -181,7 +181,7 @@ func NewAvs(c *types.NodeConfig) (*Avs, error) {
 			AvsRewardProportion: 5,
 			AvsSlashProportion:  5,
 		}
-		_, err = avsWriter.RegisterAVSToExocore(context.Background(),
+		_, err = avsWriter.RegisterAVSToChain(context.Background(),
 			params,
 		)
 		if err != nil {

@@ -7,15 +7,15 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/imua-xyz/imua-avs-sdk/client/txmgr"
+	"github.com/imua-xyz/imua-avs-sdk/logging"
 	avs "github.com/imua-xyz/imua-avs/contracts/bindings/avs"
 	"github.com/imua-xyz/imua-avs/core/chainio/eth"
-	"github.com/imua-xyz/imuachain-sdk/client/txmgr"
-	"github.com/imua-xyz/imuachain-sdk/logging"
 	"math/big"
 )
 
-type ExoWriter interface {
-	RegisterAVSToExocore(
+type AvsWriter interface {
+	RegisterAVSToChain(
 		ctx context.Context,
 		params avs.AVSParams,
 	) (*gethtypes.Receipt, error)
@@ -56,39 +56,39 @@ type ExoWriter interface {
 	) (*gethtypes.Receipt, error)
 }
 
-type ExoChainWriter struct {
-	avsManager     avs.ContracthelloWorld
-	exoChainReader ExoReader
-	ethClient      eth.EthClient
-	logger         logging.Logger
-	txMgr          txmgr.TxManager
+type ChainWriter struct {
+	avsManager  avs.ContracthelloWorld
+	chainReader AvsReader
+	ethClient   eth.EthClient
+	logger      logging.Logger
+	txMgr       txmgr.TxManager
 }
 
-var _ ExoWriter = (*ExoChainWriter)(nil)
+var _ AvsWriter = (*ChainWriter)(nil)
 
-func NewExoChainWriter(
+func NewChainWriter(
 	avsManager avs.ContracthelloWorld,
-	exoChainReader ExoReader,
+	chainReader AvsReader,
 	ethClient eth.EthClient,
 	logger logging.Logger,
 	txMgr txmgr.TxManager,
-) *ExoChainWriter {
-	return &ExoChainWriter{
-		avsManager:     avsManager,
-		exoChainReader: exoChainReader,
-		logger:         logger,
-		ethClient:      ethClient,
-		txMgr:          txMgr,
+) *ChainWriter {
+	return &ChainWriter{
+		avsManager:  avsManager,
+		chainReader: chainReader,
+		logger:      logger,
+		ethClient:   ethClient,
+		txMgr:       txMgr,
 	}
 }
 
-func BuildExoChainWriter(
+func BuildChainWriter(
 	avsAddr gethcommon.Address,
 	ethClient eth.EthClient,
 	logger logging.Logger,
 	txMgr txmgr.TxManager,
-) (*ExoChainWriter, error) {
-	exoContractBindings, err := NewExocoreContractBindings(
+) (*ChainWriter, error) {
+	contractBindings, err := NewContractBindings(
 		avsAddr,
 		ethClient,
 		logger,
@@ -96,21 +96,21 @@ func BuildExoChainWriter(
 	if err != nil {
 		return nil, err
 	}
-	exoChainReader := NewExoChainReader(
-		*exoContractBindings.AVSManager,
+	chainReader := NewChainReader(
+		*contractBindings.AVSManager,
 		logger,
 		ethClient,
 	)
-	return NewExoChainWriter(
-		*exoContractBindings.AVSManager,
-		exoChainReader,
+	return NewChainWriter(
+		*contractBindings.AVSManager,
+		chainReader,
 		ethClient,
 		logger,
 		txMgr,
 	), nil
 }
 
-func (w *ExoChainWriter) RegisterAVSToExocore(
+func (w *ChainWriter) RegisterAVSToChain(
 	ctx context.Context,
 	params avs.AVSParams,
 ) (*gethtypes.Receipt, error) {
@@ -133,7 +133,7 @@ func (w *ExoChainWriter) RegisterAVSToExocore(
 
 	return receipt, nil
 }
-func (w *ExoChainWriter) RegisterBLSPublicKey(
+func (w *ChainWriter) RegisterBLSPublicKey(
 	ctx context.Context,
 	avsAddr string,
 	pubKey []byte,
@@ -159,7 +159,7 @@ func (w *ExoChainWriter) RegisterBLSPublicKey(
 
 	return receipt, nil
 }
-func (w *ExoChainWriter) CreateNewTask(
+func (w *ChainWriter) CreateNewTask(
 	ctx context.Context,
 	name string,
 	numberToBeSquared uint64,
@@ -192,7 +192,7 @@ func (w *ExoChainWriter) CreateNewTask(
 	return receipt, nil
 }
 
-func (w *ExoChainWriter) OperatorSubmitTask(
+func (w *ChainWriter) OperatorSubmitTask(
 	ctx context.Context,
 	taskID uint64,
 	taskResponse []byte,
@@ -222,7 +222,7 @@ func (w *ExoChainWriter) OperatorSubmitTask(
 
 	return receipt, nil
 }
-func (w *ExoChainWriter) Challenge(ctx context.Context, req avs.AvsServiceContractChallengeReq) (*gethtypes.Receipt, error) {
+func (w *ChainWriter) Challenge(ctx context.Context, req avs.AvsServiceContractChallengeReq) (*gethtypes.Receipt, error) {
 	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()
 	if err != nil {
 		return nil, err
@@ -242,7 +242,7 @@ func (w *ExoChainWriter) Challenge(ctx context.Context, req avs.AvsServiceContra
 	return receipt, nil
 }
 
-func (w *ExoChainWriter) RegisterOperatorToAVS(
+func (w *ChainWriter) RegisterOperatorToAVS(
 	ctx context.Context,
 ) (*gethtypes.Receipt, error) {
 	noSendTxOpts, err := w.txMgr.GetNoSendTxOpts()

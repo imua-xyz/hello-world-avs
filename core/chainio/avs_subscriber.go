@@ -5,9 +5,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 
+	"github.com/imua-xyz/imua-avs-sdk/logging"
 	avssub "github.com/imua-xyz/imua-avs/contracts/bindings/avs"
 	"github.com/imua-xyz/imua-avs/core/chainio/eth"
-	"github.com/imua-xyz/imuachain-sdk/logging"
 )
 
 type AvsRegistrySubscriber interface {

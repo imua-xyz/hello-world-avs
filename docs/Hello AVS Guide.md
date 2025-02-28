@@ -6,8 +6,8 @@ Welcome to the **Hello World AVS**. This project demonstrates the simplest funct
 
 **GitHub Repository**:
 
-- [Hello World AVS](https://github.com/ExocoreNetwork/hello-world-avs/commits/main/)
-- [Exocore CLI](https://github.com/ExocoreNetwork/exocore)
+- [Hello World AVS](https://github.com/imua-xyz/hello-world-avs)
+- [IMUA CLI](https://github.com/imua-xyz/imuachain)
 
 ### **AVS User Flow Example**
 
@@ -26,26 +26,26 @@ Welcome to the **Hello World AVS**. This project demonstrates the simplest funct
 <aside>
 💡  
 
-Prerequistion: [Install dependency](https://docs.exocore.network/validator-setup/compiling-binary-from-source) or download it directly below.
+Prerequistion: [Install dependency](https://docs.imua.xyz/validator-setup/compiling-binary-from-source) or download it directly below.
 
 </aside>  
 
-[exocored](Hello%20AVS%20Guide%20(1)%2013d612d2b5df80fe9e3aebb4441852a3/exocored.txt)
+[imuad]()
 
 ```powershell
-git clone [https://github.com/ExocoreNetwork/exocore.git](https://github.com/ExocoreNetwork/exocore.git)
+git clone [https://github.com/imua-xyz/imuachain.git](https://github.com/imua-xyz/imuachain.git)
 git checkout develop
-cd exocore
+cd imuachain
 make build
-cp build/exocored /usr/bin/exocored
+cp build/imuad /usr/bin/imuad
 ./local_node.sh
 ```  
 
 Check Available Accounts  检查可用帐户
 
 ```powershell
-exocored keys list --home ~/.tmp-exocored
-- address: exo14uyrx67x4rgkns62f60y6cnkud30gat7a20fdx
+imuad keys list --home ~/.tmp-imuad
+- address: im16tltge7d4yr0wtkr7ut6dwwnqgnwm2ge63djdp
   name: dev0
   pubkey: '{"@type":"/ethermint.crypto.v1.ethsecp256k1.PubKey","key":"AopCZPMxuF3pvVk+LV4MNXrejD6HCjMR+8tkB7Y+F4/F"}'
   type: local
@@ -54,31 +54,31 @@ exocored keys list --home ~/.tmp-exocored
 
 ## Register Operator
 
-Fund the account if the balance of the dev0 account is 0, check it with `exocored q bank balances exo14uyrx67x4rgkns62f60y6cnkud30gat7a20fdx`
+Fund the account if the balance of the dev0 account is 0, check it with `imuad q bank balances im16tltge7d4yr0wtkr7ut6dwwnqgnwm2ge63djdp`
 
 ```powershell
-exocored tx operator register-operator --meta-info "Operator1" --from dev0 --commission-rate 0.5 --commission-max-rate 1 --commission-max-change-rate 1 --home ~/.tmp-exocored --keyring-backend test --fees 50000000000hua --chain-id exocoretestnet_233-1
+imuad tx operator register-operator --meta-info "Operator1" --from dev0 --commission-rate 0.5 --commission-max-rate 1 --commission-max-change-rate 1 --home ~/.tmp-imuad --keyring-backend test --fees 50000000000hua --chain-id imuachainlocalnet_232-1
 ```  
 
 ## Show Operator ECDSA Key
 
 ```powershell
-exocored keys unsafe-export-eth-key dev0 --home ~/.tmp-exocored
+imuad keys unsafe-export-eth-key dev0 --home ~/.tmp-imuad
 DBDE1905049DEE771ED652F3DC05D57EBFEC0FE1B0ED0310482E9C58DB398834
 ```  
 
 ## Import Keys
 
 ```powershell
-git clone https://github.com/ExocoreNetwork/hello-world-avs.git
+git clone https://github.com/imua-xyz/hello-world-avs.git
 cd hello-world-avs
 make build
 # avs owner private key sample: D196DCA836F8AC2FFF45B3C9F0113825CCBB33FA1B39737B948503B263ED75AE
 # operator private key sample: DBDE1905049DEE771ED652F3DC05D57EBFEC0FE1B0ED0310482E9C58DB398834
 # bls private key sample: 1c0599ffc52d512fd5b549fa050833e7d3bba12969d09d70a16441384e5a8a3a
-./exokey importKey --key-type ecdsa --private-key {avsOwner_private_key} --output-dir tests/keys/avs.ecdsa.key.json
-./exokey importKey --key-type ecdsa --private-key {operator_private_key} --output-dir tests/keys/operator.ecdsa.key.json
-./exokey  importKey --key-type bls --private-key {bls_private_key}  --output-dir tests/keys/test.bls.key.json  
+./imua-key importKey --key-type ecdsa --private-key {avsOwner_private_key} --output-dir tests/keys/avs.ecdsa.key.json
+./imua-key importKey --key-type ecdsa --private-key {operator_private_key} --output-dir tests/keys/operator.ecdsa.key.json
+./imua-key  importKey --key-type bls --private-key {bls_private_key}  --output-dir tests/keys/test.bls.key.json  
 
 ```
 
@@ -88,12 +88,12 @@ Continue to configure the `config.yaml` file in `hello-world-avs/config.yaml`
     - It is the EIP-55 address of the bench32 address of the operator, check it with
 
     ```powershell
-    exocored debug addr exo14uyrx67x4rgkns62f60y6cnkud30gat7a20fdx
+    imuad debug addr im14uyrx67x4rgkns62f60y6cnkud30gat7d5v30r
     Address bytes: [175 8 51 107 198 168 209 105 195 74 78 158 77 98 118 227 98 244 117 126]
-    Address (hex): AF08336BC6A8D169C34A4E9E4D6276E362F4757E
-    Address (EIP-55): 0xAF08336BC6A8D169c34A4e9e4d6276e362F4757E
-    Bech32 Acc: exo14uyrx67x4rgkns62f60y6cnkud30gat7a20fdx
-    Bech32 Val: exovaloper14uyrx67x4rgkns62f60y6cnkud30gat7nkaagu
+	Address (hex): AF08336BC6A8D169C34A4E9E4D6276E362F4757E
+	Address (EIP-55): 0xAF08336BC6A8D169c34A4e9e4d6276e362F4757E
+	Bech32 Acc: im14uyrx67x4rgkns62f60y6cnkud30gat7d5v30r
+    Bech32 Val: imvaloper14uyrx67x4rgkns62f60y6cnkud30gat769xuz5
     ```  
 
 - **avs_owner_addresses**
@@ -154,7 +154,7 @@ staker: 0xa53f68563D22EB0dAFAA871b6C08a6852f91d627
 ## Register AVS and Create Task
 
 ```powershell
-git clone https://github.com/ExocoreNetwork/hello-world-avs.git
+git clone https://github.com/imua-xyz/hello-world-avs.git
 cd hello-world-avs
 make build
 ./avsbinary/main --config config.yaml
@@ -182,13 +182,13 @@ It will show the contract address of the created AVS, and also the `config.yaml`
 ## Operator Opt into AVS
 
 ```powershell
- exocored tx operator opt-into-avs <avs_contract_address> --from dev0 --home ~/.tmp-exocored --keyring-backend test --fees 50000000000hua --chain-id exocoretestnet_233-1
+ imuad tx operator opt-into-avs <avs_contract_address> --from dev0 --home ~/.tmp-imuad --keyring-backend test --fees 50000000000hua --chain-id imuachainlocalnet_232-1
 ```  
 
 Verify operator opt into the avs:
 
 ```powershell
-exocored q operator get-avs-list exo14uyrx67x4rgkns62f60y6cnkud30gat7a20fdx
+imuad q operator get-avs-list im14uyrx67x4rgkns62f60y6cnkud30gat7d5v30r
 avs_list:
 - 0xd83404cde3a28b751a661521cb0ad3cc35b7fa95
 ```  
@@ -198,7 +198,7 @@ avs_list:
 Prerequisite:
 
 ```powershell
-git clone https://github.com/ExocoreNetwork/hello-world-avs.git
+git clone https://github.com/imua-xyz/hello-world-avs.git
 cd hello-world-avs
 make build
 ```  
@@ -243,10 +243,10 @@ check the result of `./avs/main --config config.yaml` again.
 2024-11-13T12:36:49.591Z        INFO    logging/zap_logger.go:49        sendNewTask-num:        {"taskNum": 3}
 ```  
 
-## Check TaskInfo with exocore
+## Check TaskInfo with chain
 
 ```powershell
-exocored q avs TaskInfo 0xd83404Cde3A28b751a661521Cb0aD3Cc35B7fa95 1
+imuad q avs TaskInfo 0xd83404Cde3A28b751a661521Cb0aD3Cc35B7fa95 1
 actual_threshold: "7766279631452241920"
 err_signed_operators: []
 hash: bN9XyPiULWhVmBM38FXdvn9gE46xQe91Sewfs+LAkXs=
@@ -255,11 +255,11 @@ no_signed_operators: []
 operator_active_power:
   operator_power_list:
   - active_power: "315786.000000000000000000"
-    operator_addr: exo14uyrx67x4rgkns62f60y6cnkud30gat7a20fdx
+    operator_addr: im14uyrx67x4rgkns62f60y6cnkud30gat7d5v30r
 opt_in_operators:
-- exo14uyrx67x4rgkns62f60y6cnkud30gat7a20fdx
+- im14uyrx67x4rgkns62f60y6cnkud30gat7d5v30r
 signed_operators:
-- exo14uyrx67x4rgkns62f60y6cnkud30gat7a20fdx
+- im14uyrx67x4rgkns62f60y6cnkud30gat7d5v30r
 starting_epoch: "2833"
 task_challenge_period: "2"
 task_contract_address: 0xd83404cde3a28b751a661521cb0ad3cc35b7fa95
@@ -270,15 +270,15 @@ task_total_power: "315786.000000000000000000"
 threshold_percentage: "100"
 ```  
 
-## Check Task Submit Info with exocore
+## Check Task Submit Info with chain
 
 If the phase is `PHASE_DO_COMMIT`, it is the expected result that two phase submit result is completed.
 
 ```powershell
-exocored q avs SubmitTaskResult 0xd83404Cde3A28b751a661521Cb0aD3Cc35B7fa95 1 exo14uyrx67x4rgkns62f60y6cnkud30gat7a20fdx
+imuad q avs SubmitTaskResult 0xd83404Cde3A28b751a661521Cb0aD3Cc35B7fa95 1 im14uyrx67x4rgkns62f60y6cnkud30gat7d5v30r
 info:
   bls_signature: jncXW+w8ZHcVnU/gK3F2GUktj0ZEdNxPLost64TN9Pl/KDBhl04ae/3PTxeHZ36LEU10IW2+/wdJO7njDnPUZFf9MokjbhgoTHlWsyCpJLoKBpadpBrAWcsYid856TwE
-  operator_address: exo14uyrx67x4rgkns62f60y6cnkud30gat7a20fdx
+  operator_address: im14uyrx67x4rgkns62f60y6cnkud30gat7d5v30r
   phase: PHASE_DO_COMMIT
   task_contract_address: 0xd83404Cde3A28b751a661521Cb0aD3Cc35B7fa95
   task_id: "1"
@@ -319,10 +319,10 @@ Result:
 2025-02-19T14:24:00.581+0800	INFO	logging/zap_logger.go:69	tx hash: 0x8a3ae07a4bb1955768d2afb936f51caf3fd3c3df23af5656d7b9dd72ae5c68fd
 2025-02-19T14:24:00.581+0800	INFO	logging/zap_logger.go:69	The current task 0x10Ed22D975453A5D4031440D51624552E4f204D5--2 has been challenged:
 ```  
-## Check ChallengeInfo with exocore
+## Check ChallengeInfo with chain
 
 ```powershell
-exocored q avs  ChallengeInfo 0x10Ed22D975453A5D4031440D51624552E4f204D5  1
+imuad q avs  ChallengeInfo 0x10Ed22D975453A5D4031440D51624552E4f204D5  1
 challenge_address: 4b99e597121c99ba5846c32bd49d8a4b95457f8c
 ```  
 

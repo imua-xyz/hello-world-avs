@@ -4,8 +4,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
-	sdkBls "github.com/imua-xyz/imuachain-sdk/crypto/bls"
-	sdkEcdsa "github.com/imua-xyz/imuachain-sdk/crypto/ecdsa"
+	sdkBls "github.com/imua-xyz/imua-avs-sdk/crypto/bls"
+	sdkEcdsa "github.com/imua-xyz/imua-avs-sdk/crypto/ecdsa"
 	"strings"
 
 	"github.com/prysmaticlabs/prysm/v5/crypto/bls/blst"
@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	key "github.com/imua-xyz/imua-avs/cmd/exokey/import"
+	key "github.com/imua-xyz/imua-avs/cmd/imua-key/import"
 )
 
 const (

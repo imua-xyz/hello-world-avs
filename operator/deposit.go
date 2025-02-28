@@ -37,7 +37,7 @@ func (operator *Operator) Deposit() error {
 func (operator *Operator) Delegate() error {
 	operatorbench32Address, err := core.SwitchEthAddressToImAddress(operator.config.OperatorAddress)
 	if err != nil {
-		operator.logger.Error("Cannot switch eth address to exo address", "err", err)
+		operator.logger.Error("Cannot switch eth address to bech32 address", "err", err)
 		return err
 	}
 	return delegateTo(operator.config.EthRpcUrl, operator.config.Staker, operatorbench32Address, big.NewInt(operator.config.DelegateAmount))
@@ -46,7 +46,7 @@ func (operator *Operator) Delegate() error {
 func (operator *Operator) SelfDelegate() error {
 	operatorbench32Address, err := core.SwitchEthAddressToImAddress(operator.config.OperatorAddress)
 	if err != nil {
-		operator.logger.Error("Cannot switch eth address to exo address", "err", err)
+		operator.logger.Error("Cannot switch eth address to bech32 address", "err", err)
 		return err
 	}
 	// trim the "0x" prefix

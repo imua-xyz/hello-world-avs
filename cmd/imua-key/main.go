@@ -2,17 +2,17 @@ package main
 
 import (
 	"fmt"
-	"github.com/imua-xyz/imua-avs/cmd/exokey/generate"
+	"github.com/imua-xyz/imua-avs/cmd/imua-key/generate"
 	"os"
 
-	"github.com/imua-xyz/imua-avs/cmd/exokey/import"
+	"github.com/imua-xyz/imua-avs/cmd/imua-key/import"
 	"github.com/urfave/cli/v2"
 )
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "exokey"
-	app.Description = "Exocore key manager"
+	app.Name = "imua-key"
+	app.Description = "Imua key manager"
 	app.Commands = []*cli.Command{
 		_import.Command,
 		generate.Command,

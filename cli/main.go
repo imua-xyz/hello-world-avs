@@ -15,10 +15,10 @@ func main() {
 	app.Flags = []cli.Flag{config.FileFlag}
 	app.Commands = []cli.Command{
 		{
-			Name:    "register-operator-with-exocore",
+			Name:    "register-operator-with-chain",
 			Aliases: []string{"rel"},
-			Usage:   "registers operator with exocore",
-			Action:  actions.RegisterOperatorWithExocore,
+			Usage:   "registers operator with chain",
+			Action:  actions.RegisterOperatorWithChain,
 		},
 		{
 			Name:    "register-operator-with-avs",

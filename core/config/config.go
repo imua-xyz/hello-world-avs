@@ -5,10 +5,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/urfave/cli"
 
+	"github.com/imua-xyz/imua-avs-sdk/client/txmgr"
+	sdklogging "github.com/imua-xyz/imua-avs-sdk/logging"
+	"github.com/imua-xyz/imua-avs-sdk/signer"
 	"github.com/imua-xyz/imua-avs/core/chainio/eth"
-	"github.com/imua-xyz/imuachain-sdk/client/txmgr"
-	sdklogging "github.com/imua-xyz/imuachain-sdk/logging"
-	"github.com/imua-xyz/imuachain-sdk/signerv2"
 
 	blscommon "github.com/prysmaticlabs/prysm/v5/crypto/bls/common"
 )
@@ -18,7 +18,7 @@ type Config struct {
 	EcdsaPrivateKey *ecdsa.PrivateKey
 	BlsPrivateKey   *blscommon.SecretKey
 	Logger          sdklogging.Logger
-	// we need the url for the exocore-sdk currently... eventually standardize api to
+	// we need the url for the sdk currently... eventually standardize api to
 	// only take an ethclient or an rpcUrl (and build the ethclient at each constructor site)
 	EthHttpRpcUrl              string
 	EthWsRpcUrl                string
@@ -29,7 +29,7 @@ type Config struct {
 	AggregatorServerIpPortAddr string
 	RegisterOperatorOnStartup  bool
 	// json:"-" skips this field when marshaling (only used for logging to stdout), since SignerFn doesnt implement marshalJson
-	SignerFn                 signerv2.SignerFn `json:"-"`
+	SignerFn                 signer.SignerFn `json:"-"`
 	TxMgr                    txmgr.TxManager
 	AggregatorAddress        common.Address
 	EcdsaPrivateKeyStorePath string `yaml:"ecdsa_private_key_store_path"`

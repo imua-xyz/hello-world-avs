@@ -14,8 +14,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
-	utils "github.com/imua-xyz/imuachain-sdk/crypto/bls"
-	"github.com/imua-xyz/imuachain-sdk/crypto/ecdsa"
+	utils "github.com/imua-xyz/imua-avs-sdk/crypto/bls"
+	"github.com/imua-xyz/imua-avs-sdk/crypto/ecdsa"
 	"github.com/urfave/cli/v2"
 )
 

@@ -183,7 +183,7 @@ func SwitchEthAddressToImAddress(ethAddress string) (string, error) {
 	bech32Prefix := "im"
 	imAddress, err := bech32.EncodeFromBase256(bech32Prefix, b)
 	if err != nil {
-		return "", fmt.Errorf("failed to encode exo address: %w", err)
+		return "", fmt.Errorf("failed to encode bech32 address: %w", err)
 	}
 
 	return imAddress, nil

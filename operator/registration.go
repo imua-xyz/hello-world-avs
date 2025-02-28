@@ -8,12 +8,12 @@ import (
 )
 
 func (o *Operator) registerOperatorOnStartup() {
-	err := o.RegisterOperatorWithExocore()
+	err := o.RegisterOperatorWithChain()
 	if err != nil {
-		// This error might only be that the operator was already registered with exocore, so we don't want to fatal
-		o.logger.Error("Error registering operator with exocore", "err", err)
+		// This error might only be that the operator was already registered with chain, so we don't want to fatal
+		o.logger.Error("Error registering operator with chain", "err", err)
 	} else {
-		o.logger.Infof("Registered operator with exocore")
+		o.logger.Infof("Registered operator with chain")
 	}
 
 	err = o.RegisterOperatorWithAvs()
@@ -21,7 +21,7 @@ func (o *Operator) registerOperatorOnStartup() {
 		o.logger.Fatal("Error registering operator with avs", "err", err)
 	}
 }
-func (o *Operator) RegisterOperatorWithExocore() error {
+func (o *Operator) RegisterOperatorWithChain() error {
 	flag, err := o.avsReader.IsOperator(&bind.CallOpts{}, o.operatorAddr.String())
 	if err != nil {
 		o.logger.Error("Cannot exec IsOperator", "err", err)

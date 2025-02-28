@@ -9,7 +9,7 @@ GOGET=$(GOCMD) get
 AVS_BINARY=avsbinary
 OPERATOR_BINARY=operatorbinary
 CHALLENGE_BINARY=challengebinary
-EXOKEY_BINARY=exokey
+IMUAKEY_BINARY=imua-key
 HELLO=hello-cli
 # Go version
 GO_VERSION=1.22
@@ -21,7 +21,7 @@ LDFLAGS=-ldflags "-s -w"
 all: clean build
 
 # Build all binaries
-build: avs operator exokey challenge hello
+build: avs operator imua-key challenge hello
 
 # AVS build
 hello:
@@ -38,13 +38,13 @@ operator:
 challenge:
 	$(GOBUILD) $(LDFLAGS) -o $(CHALLENGE_BINARY) challenge/cmd/main.go
 
-# ExoKey build
-exokey:
-	 GO_VERSION=$(GO_VERSION) $(GOBUILD) $(LDFLAGS) -o $(EXOKEY_BINARY) cmd/exokey/main.go
+# imua-key build
+imua-key:
+	 GO_VERSION=$(GO_VERSION) $(GOBUILD) $(LDFLAGS) -o $(IMUAKEY_BINARY) cmd/imua-key/main.go
 
 # Clean build artifacts
 clean:
-	rm -f $(AVS_BINARY) $(OPERATOR_BINARY) $(EXOKEY_BINARY)
+	rm -f $(AVS_BINARY) $(OPERATOR_BINARY) $(IMUAKEY_BINARY)
 
 # Run tests
 test:
@@ -69,7 +69,7 @@ build-darwin:
 
 # Import key command
 import-key:
-	./$(EXOKEY_BINARY) import --key-type ecdsa $(PRI_KEY)
+	./$(IMUAKEY_BINARY) import --key-type ecdsa $(PRI_KEY)
 
 # Phony targets
-.PHONY: all build avs operator exokey clean test deps lint build-linux build-darwin import-key challenge hello
+.PHONY: all build avs operator imua-key clean test deps lint build-linux build-darwin import-key challenge hello

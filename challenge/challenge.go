@@ -9,14 +9,14 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/imua-xyz/imua-avs-sdk/client/txmgr"
+	sdklogging "github.com/imua-xyz/imua-avs-sdk/logging"
+	"github.com/imua-xyz/imua-avs-sdk/nodeapi"
+	"github.com/imua-xyz/imua-avs-sdk/signer"
 	avs "github.com/imua-xyz/imua-avs/contracts/bindings/avs"
 	chain "github.com/imua-xyz/imua-avs/core/chainio"
 	"github.com/imua-xyz/imua-avs/core/chainio/eth"
 	"github.com/imua-xyz/imua-avs/types"
-	"github.com/imua-xyz/imuachain-sdk/client/txmgr"
-	sdklogging "github.com/imua-xyz/imuachain-sdk/logging"
-	"github.com/imua-xyz/imuachain-sdk/nodeapi"
-	"github.com/imua-xyz/imuachain-sdk/signerv2"
 	"math/big"
 	"os"
 	"strconv"
@@ -34,8 +34,8 @@ type Challenger struct {
 	ethClient       eth.EthClient
 	ethWsClient     *ethclient.Client
 	nodeApi         *nodeapi.NodeApi
-	avsWriter       chain.ExoWriter
-	avsReader       chain.ExoChainReader
+	avsWriter       chain.AvsWriter
+	avsReader       chain.ChainReader
 	avsAddr         common.Address
 	epochIdentifier string
 	contractABI     abi.ABI
@@ -80,7 +80,7 @@ func NewChallengeFromConfig(c types.NodeConfig) (*Challenger, error) {
 		logger.Info("AVS_ECDSA_KEY_PASSWORD env var not set. using empty string")
 	}
 
-	signerV2, challengeSender, err := signerv2.SignerFromConfig(signerv2.Config{
+	signer, challengeSender, err := signer.SignerFromConfig(signer.Config{
 		KeystorePath: c.AVSEcdsaPrivateKeyStorePath,
 		Password:     ecdsaKeyPassword,
 	}, chainId)
@@ -99,14 +99,14 @@ func NewChallengeFromConfig(c types.NodeConfig) (*Challenger, error) {
 	if c.AVSOwnerAddress != challengeSender.String() {
 		logger.Error("challengeSender is not equal AVSOwnerAddress")
 	}
-	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, common.HexToAddress(c.AVSOwnerAddress))
+	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signer, common.HexToAddress(c.AVSOwnerAddress))
 
-	avsReader, _ := chain.BuildExoChainReader(
+	avsReader, _ := chain.BuildChainReader(
 		common.HexToAddress(c.AVSAddress),
 		ethRpcClient,
 		logger)
 
-	avsWriter, _ := chain.BuildExoChainWriter(
+	avsWriter, _ := chain.BuildChainWriter(
 		common.HexToAddress(c.AVSAddress),
 		ethRpcClient,
 		logger,
@@ -220,7 +220,7 @@ func (o *Challenger) Start(ctx context.Context) error {
 	}
 }
 
-// ProcessNewTaskCreatedLog TaskResponse is the struct that is signed and sent to the exocore as a task response.
+// ProcessNewTaskCreatedLog TaskResponse is the struct that is signed and sent to the chain as a task response.
 func (o *Challenger) ProcessNewTaskCreatedLog(e *avs.ContracthelloWorldTaskCreated) *avs.AvsServiceContractChallengeReq {
 	o.logger.Info("New Task Created", "TaskID", e.TaskId.Uint64(),
 		"Issuer", e.Issuer.String(), "Name", e.Name, "NumberToBeSquared", e.NumberToBeSquared)
