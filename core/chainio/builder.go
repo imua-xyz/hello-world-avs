@@ -2,10 +2,10 @@ package chainio
 
 import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/imua-xyz/imua-avs-sdk/client/txmgr"
+	"github.com/imua-xyz/imua-avs-sdk/logging"
+	"github.com/imua-xyz/imua-avs-sdk/signer"
 	"github.com/imua-xyz/imua-avs/core/chainio/eth"
-	"github.com/imua-xyz/imuachain-sdk/client/txmgr"
-	"github.com/imua-xyz/imuachain-sdk/logging"
-	"github.com/imua-xyz/imuachain-sdk/signerv2"
 )
 
 type BuildAllConfig struct {
@@ -17,8 +17,8 @@ type BuildAllConfig struct {
 
 type Clients struct {
 	AvsRegistryChainSubscriber *AvsRegistryChainSubscriber
-	EXOChainReader             *ExoChainReader
-	EXOChainWriter             *ExoChainWriter
+	ChainReader                *ChainReader
+	ChainWriter                *ChainWriter
 	EthHttpClient              *eth.Client
 	EthWsClient                *eth.Client
 }
@@ -26,7 +26,7 @@ type Clients struct {
 func BuildAll(
 	config BuildAllConfig,
 	signerAddr gethcommon.Address,
-	signerFn signerv2.SignerFn,
+	signerFn signer.SignerFn,
 	logger logging.Logger,
 ) (*Clients, error) {
 	config.validate(logger)
@@ -45,20 +45,20 @@ func BuildAll(
 	}
 
 	txMgr := txmgr.NewSimpleTxManager(ethHttpClient, logger, signerFn, signerAddr)
-	// creating Exo clients: Reader, Writer and Subscriber
-	exoChainReader, exoChainWriter, avsRegistrySubscriber, err := config.buildExoClients(
+	// creating  clients: Reader, Writer and Subscriber
+	chainReader, chainWriter, avsRegistrySubscriber, err := config.buildClients(
 		ethHttpClient,
 		txMgr,
 		logger,
 	)
 	if err != nil {
-		logger.Error("Failed to create Exo Reader, Writer and Subscriber", "err", err)
+		logger.Error("Failed to create Reader, Writer and Subscriber", "err", err)
 		return nil, err
 	}
 
 	return &Clients{
-		EXOChainReader:             exoChainReader,
-		EXOChainWriter:             exoChainWriter,
+		ChainReader:                chainReader,
+		ChainWriter:                chainWriter,
 		AvsRegistryChainSubscriber: avsRegistrySubscriber,
 		EthHttpClient:              ethHttpClient,
 		EthWsClient:                ethWsClient,
@@ -66,50 +66,50 @@ func BuildAll(
 
 }
 
-func (config *BuildAllConfig) buildExoClients(
+func (config *BuildAllConfig) buildClients(
 	ethHttpClient eth.EthClient,
 	txMgr txmgr.TxManager,
 	logger logging.Logger,
-) (*ExoChainReader, *ExoChainWriter, *AvsRegistryChainSubscriber, error) {
-	exoContractBindings, err := NewExocoreContractBindings(
+) (*ChainReader, *ChainWriter, *AvsRegistryChainSubscriber, error) {
+	contractBindings, err := NewContractBindings(
 		gethcommon.HexToAddress(config.AvsAddr),
 		ethHttpClient,
 		logger,
 	)
 	if err != nil {
-		logger.Error("Failed to create ExocoreContractBindings", "err", err)
+		logger.Error("Failed to create ContractBindings", "err", err)
 		return nil, nil, nil, err
 	}
 
-	// get the Reader for the Exo contracts
-	exoChainReader := NewExoChainReader(
-		*exoContractBindings.AVSManager,
+	// get the Reader for the chain contracts
+	chainReader := NewChainReader(
+		*contractBindings.AVSManager,
 		logger,
 		ethHttpClient,
 	)
 
-	exoChainWriter := NewExoChainWriter(
-		*exoContractBindings.AVSManager,
-		exoChainReader,
+	chainWriter := NewChainWriter(
+		*contractBindings.AVSManager,
+		chainReader,
 		ethHttpClient,
 		logger,
 		txMgr,
 	)
 	if err != nil {
-		logger.Error("Failed to create ExoChainWriter", "err", err)
+		logger.Error("Failed to create ChainWriter", "err", err)
 		return nil, nil, nil, err
 	}
 
 	avsRegistrySubscriber, err := BuildAvsRegistryChainSubscriber(
-		exoContractBindings.AvsAddr,
+		contractBindings.AvsAddr,
 		ethHttpClient,
 		logger,
 	)
 	if err != nil {
-		logger.Error("Failed to create ExoChainSubscriber", "err", err)
+		logger.Error("Failed to create ChainSubscriber", "err", err)
 		return nil, nil, nil, err
 	}
-	return exoChainReader, exoChainWriter, avsRegistrySubscriber, err
+	return chainReader, chainWriter, avsRegistrySubscriber, err
 }
 
 // Very basic validation that makes sure all fields are nonempty

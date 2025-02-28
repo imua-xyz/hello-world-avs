@@ -8,10 +8,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	sdkutils "github.com/imua-xyz/imua-avs-sdk/utils"
 	avs "github.com/imua-xyz/imua-avs/contracts/bindings/avs"
 	"github.com/imua-xyz/imua-avs/core/config"
 	"github.com/imua-xyz/imua-avs/types"
-	sdkutils "github.com/imua-xyz/imuachain-sdk/utils"
 	"log"
 
 	"github.com/urfave/cli"

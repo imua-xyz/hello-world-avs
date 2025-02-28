@@ -18,17 +18,17 @@ Or check out the latest release.
 
 # Quick Start
 
-1.`./exokey import --key-type ecdsa {pri_key}`   
+1.`./imua-key import --key-type ecdsa {pri_key}`   
 2.`./avs/main --config config.yaml`  
 3.`./operator/main --config config.yaml`  
 
 ## Private Key Management for AVS and Operator
 
 ### Overview
-This document provides a comprehensive guide to generating and managing private keys for the AVS (Actively Validated Service) system using the `exokey` utility.
+This document provides a comprehensive guide to generating and managing private keys for the AVS (Actively Validated Service) system using the `imua-key` utility.
 
 ### Prerequisites
-- Ensure `exokey` is installed(use "make exokey" command)
+- Ensure `imua-key` is installed(use "make imua-key" command)
 - Have private keys ready for import
 
 ##  Steps
@@ -36,14 +36,14 @@ This document provides a comprehensive guide to generating and managing private 
 ### 1. Import AVS ECDSA Private Key
 ```bash
 # Import AVS private key
-./exokey importKey --key-type ecdsa --private-key {avs_private_key}  --output-dir tests/keys/avs.ecdsa.key.json
+./imua-key importKey --key-type ecdsa --private-key {avs_private_key}  --output-dir tests/keys/avs.ecdsa.key.json
 # Output: tests/keys/avs.ecdsa.key.json
 ```
 
 ### 2. Import Operator ECDSA Private Key
 ```bash
 # Import Operator private key
-./exokey importKey --key-type ecdsa --private-key {operator_private_key} --output-dir tests/keys/operator.ecdsa.key.json
+./imua-key importKey --key-type ecdsa --private-key {operator_private_key} --output-dir tests/keys/operator.ecdsa.key.json
 # Output: tests/keys/operator.ecdsa.key.json
 ```
 
@@ -51,14 +51,14 @@ This document provides a comprehensive guide to generating and managing private 
 #### Import
 ```bash
 # Import BLS private key
-./exokey  importKey --key-type bls --private-key {bls_private_key}  --output-dir tests/keys/test.bls.key.json
+./imua-key  importKey --key-type bls --private-key {bls_private_key}  --output-dir tests/keys/test.bls.key.json
 # Output: tests/keys/test.bls.key.json
 ```
 
 #### Generate
 ```bash
 # generate BLS key
-./exokey  generate --key-type bls --num-keys 1
+./imua-key  generate --key-type bls --num-keys 1
 # Output: random folder
 ```
 
@@ -127,27 +127,27 @@ avs_address: 0xfF8f8297BEF982ac6ED7a203e144D9fa4F0FcE31
 ```
 
 - **operator_address**
-EIP-55 address for the operator, convert the address from bench32 address with exocored.
+EIP-55 address for the operator, convert the address from bench32 address with imuad.
 
 ```
-exocored debug addr <bench32_address>
+imuad debug addr <bench32_address>
 ```
 
 for example
 ```
-exocored debug addr exo18cggcpvwspnd5c6ny8wrqxpffj5zmhklprtnph
+imuad debug addr im18cggcpvwspnd5c6ny8wrqxpffj5zmhkl3agtrj
 Address bytes: [62 16 140 5 142 128 102 218 99 83 33 220 48 24 41 76 168 45 222 223]
 Address (hex): 3E108C058E8066DA635321DC3018294CA82DDEDF
 Address (EIP-55): 0x3e108c058e8066DA635321Dc3018294cA82ddEdf
-Bech32 Acc: exo18cggcpvwspnd5c6ny8wrqxpffj5zmhklprtnph
-Bech32 Val: exovaloper18cggcpvwspnd5c6ny8wrqxpffj5zmhkl0le8yd
+Bech32 Acc: im18cggcpvwspnd5c6ny8wrqxpffj5zmhkl3agtrj
+Bech32 Val: imvaloper18cggcpvwspnd5c6ny8wrqxpffj5zmhklxvzxw9
 ```
 
 - **avs_owner_address**
-AVS Owner address is used to deploy the avs contract on exocore, it should be consistent with the avs_owner_addresses below. please note that avs_owner_addresses use bench32 address, while avs_owner_address use EIP-55 address.
+AVS Owner address is used to deploy the avs contract on imua chain, it should be consistent with the avs_owner_addresses below. please note that avs_owner_addresses use bench32 address, while avs_owner_address use EIP-55 address.
 
 - **avs_address**
-The avs contract address deployed on exocore. If it is empty string, it will be deployed on-fly.
+The avs contract address deployed on imua chain. If it is empty string, it will be deployed on-fly.
 
 ```
 # ETH RPC URL
@@ -164,15 +164,15 @@ register_operator_on_startup: false
 - avs_ecdsa_private_key_store_path
 - operator_ecdsa_private_key_store_path
 - bls_private_key_store_path
-After import avs owner/operator/bls keys with `exokey` command, the json files will be generted under tests/keys folder.
+After import avs owner/operator/bls keys with `imua-key` command, the json files will be generted under tests/keys folder.
 
 ```
 #register avs parameters
 avs_name: "hello-avs"
 min_stake_amount: 1
 avs_owner_addresses:
-  - "exo18cggcpvwspnd5c6ny8wrqxpffj5zmhklprtnph"
-  - "exo1sc9kjykz6qehauzmhjympsktdjaw4d99dksgrk"
+  - "im18cggcpvwspnd5c6ny8wrqxpffj5zmhkl3agtrj"
+  - "im1eedksrgl6fv6mfyzp6f3f08swgaaky58xe5m7k"
 asset_ids:
   - "0xdac17f958d2ee523a2206206994597c13d831ec7_0x65"
 avs_unbonding_period: 7

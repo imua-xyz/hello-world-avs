@@ -10,16 +10,16 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/imua-xyz/imua-avs-sdk/client/txmgr"
+	"github.com/imua-xyz/imua-avs-sdk/crypto/bls"
+	sdklogging "github.com/imua-xyz/imua-avs-sdk/logging"
+	"github.com/imua-xyz/imua-avs-sdk/nodeapi"
+	"github.com/imua-xyz/imua-avs-sdk/signer"
 	avs "github.com/imua-xyz/imua-avs/contracts/bindings/avs"
 	"github.com/imua-xyz/imua-avs/core"
 	chain "github.com/imua-xyz/imua-avs/core/chainio"
 	"github.com/imua-xyz/imua-avs/core/chainio/eth"
 	"github.com/imua-xyz/imua-avs/types"
-	"github.com/imua-xyz/imuachain-sdk/client/txmgr"
-	"github.com/imua-xyz/imuachain-sdk/crypto/bls"
-	sdklogging "github.com/imua-xyz/imuachain-sdk/logging"
-	"github.com/imua-xyz/imuachain-sdk/nodeapi"
-	"github.com/imua-xyz/imuachain-sdk/signerv2"
 	blscommon "github.com/prysmaticlabs/prysm/v5/crypto/bls/common"
 	"math/big"
 	"os"
@@ -39,8 +39,8 @@ type Operator struct {
 	logger      sdklogging.Logger
 	ethClient   eth.EthClient
 	nodeApi     *nodeapi.NodeApi
-	avsWriter   chain.ExoWriter
-	avsReader   chain.ExoChainReader
+	avsWriter   chain.AvsWriter
+	avsReader   chain.ChainReader
 	ethWsClient *ethclient.Client
 
 	blsKeypair   blscommon.SecretKey
@@ -102,7 +102,7 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		logger.Info("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
 	}
 
-	signerV2, operatorSender, err := signerv2.SignerFromConfig(signerv2.Config{
+	signer, operatorSender, err := signer.SignerFromConfig(signer.Config{
 		KeystorePath: c.OperatorEcdsaPrivateKeyStorePath,
 		Password:     ecdsaKeyPassword,
 	}, chainId)
@@ -121,14 +121,14 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	if c.OperatorAddress != operatorSender.String() {
 		logger.Error("operatorSender is not equal OperatorAddress")
 	}
-	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, common.HexToAddress(c.OperatorAddress))
+	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signer, common.HexToAddress(c.OperatorAddress))
 
-	avsReader, _ := chain.BuildExoChainReader(
+	avsReader, _ := chain.BuildChainReader(
 		common.HexToAddress(c.AVSAddress),
 		ethRpcClient,
 		logger)
 
-	avsWriter, _ := chain.BuildExoChainWriter(
+	avsWriter, _ := chain.BuildChainWriter(
 		common.HexToAddress(c.AVSAddress),
 		ethRpcClient,
 		logger,
@@ -179,7 +179,7 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 }
 
 func (o *Operator) Start(ctx context.Context) error {
-	// 1.operator register exocore
+	// 1.operator register chain
 	// 2.operator opt-in avs
 	// 3.operator accept staker delegation so that avs voting power is not 0, otherwise the task cannot be created
 	// 4.operator register BLSPublicKey
@@ -346,7 +346,7 @@ func (o *Operator) Start(ctx context.Context) error {
 				}
 				taskInfo, _ := o.avsReader.GetTaskInfo(&bind.CallOpts{}, o.avsAddr.String(), taskResponse.TaskID)
 				go func() {
-					_, err := o.SendSignedTaskResponseToExocore(context.Background(), taskResponse.TaskID, resBytes, sig, taskInfo)
+					_, err := o.SendSignedTaskResponseToChain(context.Background(), taskResponse.TaskID, resBytes, sig, taskInfo)
 					if err != nil {
 
 					}
@@ -368,7 +368,7 @@ func (o *Operator) parseEvent(vLog ethtypes.Log) (interface{}, error) {
 	return &event, nil
 }
 
-// ProcessNewTaskCreatedLog TaskResponse is the struct that is signed and sent to the exocore as a task response.
+// ProcessNewTaskCreatedLog TaskResponse is the struct that is signed and sent to the chain as a task response.
 func (o *Operator) ProcessNewTaskCreatedLog(e *avs.ContracthelloWorldTaskCreated) *core.TaskResponse {
 	o.logger.Info("New Task Created", "TaskID", e.TaskId.Uint64(),
 		"Issuer", e.Issuer.String(), "Name", e.Name, "NumberToBeSquared", e.NumberToBeSquared)
@@ -394,7 +394,7 @@ func (o *Operator) SignTaskResponse(taskResponse *core.TaskResponse) ([]byte, []
 	return sig.Marshal(), data, nil
 }
 
-func (o *Operator) SendSignedTaskResponseToExocore(
+func (o *Operator) SendSignedTaskResponseToChain(
 	ctx context.Context,
 	taskId uint64,
 	taskResponse []byte,

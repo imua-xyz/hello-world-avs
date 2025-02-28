@@ -5,13 +5,13 @@ import (
 	"github.com/urfave/cli"
 	"log"
 
+	sdkutils "github.com/imua-xyz/imua-avs-sdk/utils"
 	"github.com/imua-xyz/imua-avs/core/config"
 	"github.com/imua-xyz/imua-avs/operator"
 	"github.com/imua-xyz/imua-avs/types"
-	sdkutils "github.com/imua-xyz/imuachain-sdk/utils"
 )
 
-func RegisterOperatorWithExocore(ctx *cli.Context) error {
+func RegisterOperatorWithChain(ctx *cli.Context) error {
 
 	configPath := ctx.GlobalString(config.FileFlag.Name)
 	nodeConfig := types.NodeConfig{}
@@ -33,7 +33,7 @@ func RegisterOperatorWithExocore(ctx *cli.Context) error {
 		return err
 	}
 
-	err = o.RegisterOperatorWithExocore()
+	err = o.RegisterOperatorWithChain()
 	if err != nil {
 		return err
 	}

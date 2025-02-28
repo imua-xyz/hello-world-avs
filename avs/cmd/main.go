@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	sdkutils "github.com/imua-xyz/imua-avs-sdk/utils"
 	"github.com/imua-xyz/imua-avs/types"
-	sdkutils "github.com/imua-xyz/imuachain-sdk/utils"
 	"log"
 	"os"
 

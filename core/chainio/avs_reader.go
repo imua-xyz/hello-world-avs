@@ -4,12 +4,12 @@ import (
 	sdkmath "cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/imua-xyz/imua-avs-sdk/logging"
 	avs "github.com/imua-xyz/imua-avs/contracts/bindings/avs"
 	"github.com/imua-xyz/imua-avs/core/chainio/eth"
-	"github.com/imua-xyz/imuachain-sdk/logging"
 )
 
-type ExoReader interface {
+type AvsReader interface {
 	GetOptInOperators(
 		opts *bind.CallOpts,
 		avsAddress string,
@@ -66,33 +66,33 @@ type ExoReader interface {
 	) ([]avs.OperatorResInfo, error)
 }
 
-type ExoChainReader struct {
+type ChainReader struct {
 	logger     logging.Logger
 	avsManager avs.ContracthelloWorld
 	ethClient  eth.EthClient
 }
 
 // forces EthReader to implement the chainio.Reader interface
-var _ ExoReader = (*ExoChainReader)(nil)
+var _ AvsReader = (*ChainReader)(nil)
 
-func NewExoChainReader(
+func NewChainReader(
 	avsManager avs.ContracthelloWorld,
 	logger logging.Logger,
 	ethClient eth.EthClient,
-) *ExoChainReader {
-	return &ExoChainReader{
+) *ChainReader {
+	return &ChainReader{
 		avsManager: avsManager,
 		logger:     logger,
 		ethClient:  ethClient,
 	}
 }
 
-func BuildExoChainReader(
+func BuildChainReader(
 	avsAddr gethcommon.Address,
 	ethClient eth.EthClient,
 	logger logging.Logger,
-) (*ExoChainReader, error) {
-	exoContractBindings, err := NewExocoreContractBindings(
+) (*ChainReader, error) {
+	contractBindings, err := NewContractBindings(
 		avsAddr,
 		ethClient,
 		logger,
@@ -100,14 +100,14 @@ func BuildExoChainReader(
 	if err != nil {
 		return nil, err
 	}
-	return NewExoChainReader(
-		*exoContractBindings.AVSManager,
+	return NewChainReader(
+		*contractBindings.AVSManager,
 		logger,
 		ethClient,
 	), nil
 }
 
-func (r *ExoChainReader) GetOptInOperators(
+func (r *ChainReader) GetOptInOperators(
 	opts *bind.CallOpts,
 	avsAddress string,
 ) ([]gethcommon.Address, error) {
@@ -121,7 +121,7 @@ func (r *ExoChainReader) GetOptInOperators(
 	return operators, nil
 }
 
-func (r *ExoChainReader) GetRegisteredPubkey(opts *bind.CallOpts, operator string, avsAddress string) ([]byte, error) {
+func (r *ChainReader) GetRegisteredPubkey(opts *bind.CallOpts, operator string, avsAddress string) ([]byte, error) {
 	pukKey, err := r.avsManager.GetRegisteredPubkey(
 		opts,
 		gethcommon.HexToAddress(operator), gethcommon.HexToAddress(avsAddress))
@@ -132,7 +132,7 @@ func (r *ExoChainReader) GetRegisteredPubkey(opts *bind.CallOpts, operator strin
 	return pukKey, nil
 }
 
-func (r *ExoChainReader) GtAVSUSDValue(opts *bind.CallOpts, avsAddress string) (sdkmath.LegacyDec, error) {
+func (r *ChainReader) GtAVSUSDValue(opts *bind.CallOpts, avsAddress string) (sdkmath.LegacyDec, error) {
 	amount, err := r.avsManager.GetAVSUSDValue(
 		opts,
 		gethcommon.HexToAddress(avsAddress))
@@ -143,7 +143,7 @@ func (r *ExoChainReader) GtAVSUSDValue(opts *bind.CallOpts, avsAddress string) (
 	return sdkmath.LegacyNewDecFromBigInt(amount), nil
 }
 
-func (r *ExoChainReader) GetOperatorOptedUSDValue(opts *bind.CallOpts, avsAddress string, operatorAddr string) (sdkmath.LegacyDec, error) {
+func (r *ChainReader) GetOperatorOptedUSDValue(opts *bind.CallOpts, avsAddress string, operatorAddr string) (sdkmath.LegacyDec, error) {
 	amount, err := r.avsManager.GetOperatorOptedUSDValue(
 		opts,
 		gethcommon.HexToAddress(avsAddress), gethcommon.HexToAddress(operatorAddr))
@@ -154,7 +154,7 @@ func (r *ExoChainReader) GetOperatorOptedUSDValue(opts *bind.CallOpts, avsAddres
 	return sdkmath.LegacyNewDecFromBigInt(amount), nil
 }
 
-func (r *ExoChainReader) GetAVSEpochIdentifier(opts *bind.CallOpts, avsAddress string) (string, error) {
+func (r *ChainReader) GetAVSEpochIdentifier(opts *bind.CallOpts, avsAddress string) (string, error) {
 	epochIdentifier, err := r.avsManager.GetAVSEpochIdentifier(
 		opts,
 		gethcommon.HexToAddress(avsAddress))
@@ -164,7 +164,7 @@ func (r *ExoChainReader) GetAVSEpochIdentifier(opts *bind.CallOpts, avsAddress s
 	}
 	return epochIdentifier, nil
 }
-func (r *ExoChainReader) GetTaskInfo(opts *bind.CallOpts, avsAddress string, taskID uint64) (avs.TaskInfo, error) {
+func (r *ChainReader) GetTaskInfo(opts *bind.CallOpts, avsAddress string, taskID uint64) (avs.TaskInfo, error) {
 	info, err := r.avsManager.GetTaskInfo(
 		opts,
 		gethcommon.HexToAddress(avsAddress), taskID)
@@ -175,7 +175,7 @@ func (r *ExoChainReader) GetTaskInfo(opts *bind.CallOpts, avsAddress string, tas
 	return info, nil
 }
 
-func (r *ExoChainReader) IsOperator(opts *bind.CallOpts, operator string) (bool, error) {
+func (r *ChainReader) IsOperator(opts *bind.CallOpts, operator string) (bool, error) {
 	flag, err := r.avsManager.IsOperator(
 		opts,
 		gethcommon.HexToAddress(operator))
@@ -185,7 +185,7 @@ func (r *ExoChainReader) IsOperator(opts *bind.CallOpts, operator string) (bool,
 	}
 	return flag, nil
 }
-func (r *ExoChainReader) GetCurrentEpoch(opts *bind.CallOpts, epochIdentifier string) (int64, error) {
+func (r *ChainReader) GetCurrentEpoch(opts *bind.CallOpts, epochIdentifier string) (int64, error) {
 	currentEpoch, err := r.avsManager.GetCurrentEpoch(
 		opts,
 		epochIdentifier)
@@ -195,7 +195,7 @@ func (r *ExoChainReader) GetCurrentEpoch(opts *bind.CallOpts, epochIdentifier st
 	}
 	return currentEpoch, nil
 }
-func (r *ExoChainReader) GetChallengeInfo(opts *bind.CallOpts, taskAddress string, taskID uint64) (gethcommon.Address, error) {
+func (r *ChainReader) GetChallengeInfo(opts *bind.CallOpts, taskAddress string, taskID uint64) (gethcommon.Address, error) {
 	address, err := r.avsManager.GetChallengeInfo(
 		opts,
 		gethcommon.HexToAddress(taskAddress),
@@ -207,7 +207,7 @@ func (r *ExoChainReader) GetChallengeInfo(opts *bind.CallOpts, taskAddress strin
 	return address, nil
 }
 
-func (r *ExoChainReader) GetOperatorTaskResponse(opts *bind.CallOpts, taskAddress string, operatorAddress string, taskID uint64) (avs.TaskResultInfo, error) {
+func (r *ChainReader) GetOperatorTaskResponse(opts *bind.CallOpts, taskAddress string, operatorAddress string, taskID uint64) (avs.TaskResultInfo, error) {
 	res, err := r.avsManager.GetOperatorTaskResponse(
 		opts,
 		gethcommon.HexToAddress(taskAddress),
@@ -220,7 +220,7 @@ func (r *ExoChainReader) GetOperatorTaskResponse(opts *bind.CallOpts, taskAddres
 	return res, nil
 }
 
-func (r *ExoChainReader) GetOperatorTaskResponseList(opts *bind.CallOpts, taskAddress string, taskID uint64) ([]avs.OperatorResInfo, error) {
+func (r *ChainReader) GetOperatorTaskResponseList(opts *bind.CallOpts, taskAddress string, taskID uint64) ([]avs.OperatorResInfo, error) {
 	res, err := r.avsManager.GetOperatorTaskResponseList(
 		opts,
 		gethcommon.HexToAddress(taskAddress),
