@@ -1,11 +1,11 @@
 # this sets the logger level (true = info, false = debug)
 production: false
-#The eoa address of Operato, used for sending transactions
-operator_address: 0x3e108c058e8066DA635321Dc3018294cA82ddEdf
+#The eoa address of Operator, used for sending transactions
+operator_address: 0x1bc9B41AF4592342189e2bE473C56299db515277
 #The eoa address of avs owner, used for sending transactions
-avs_owner_address: 0x4b99E597121C99ba5846c32bd49d8A4B95457f8C
+avs_owner_address: 0x3e108c058e8066DA635321Dc3018294cA82ddEdf
 #Address of deployed AVS contract
-avs_address: 
+avs_address: 0xDF907c29719154eb9872f021d21CAE6E5025d7aB
 # ETH RPC URL
 eth_rpc_url: http://127.0.0.1:8545
 eth_ws_url: ws://localhost:8546
@@ -29,16 +29,16 @@ asset_ids:
 avs_unbonding_period: 7
 min_self_delegation: 0
 epoch_identifier: minute
-avs_reward_address: 0x10Ed22D975453A5D4031440D51624552E4f204D5
-avs_slash_address: 0x10Ed22D975453A5D4031440D51624552E4f204D5
-task_address: 0x10Ed22D975453A5D4031440D51624552E4f204D5
+avs_reward_address: 0xDF907c29719154eb9872f021d21CAE6E5025d7aB
+avs_slash_address: 0xDF907c29719154eb9872f021d21CAE6E5025d7aB
+task_address: 0xDF907c29719154eb9872f021d21CAE6E5025d7aB
 mini_opt_in_operators: 3
 min_total_stake_amount: 3
 avs_reward_proportion: 3
 avs_slash_proportion: 3
 #create new task parameters
 #Create task intervals,Unit second
-create_task_interval: 100
+create_task_interval: 10
 task_response_period: 3
 task_challenge_period: 3
 threshold_percentage: 100
