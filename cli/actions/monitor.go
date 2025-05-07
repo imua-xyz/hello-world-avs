@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -12,7 +14,6 @@ import (
 	avs "github.com/imua-xyz/imua-avs/contracts/bindings/avs"
 	"github.com/imua-xyz/imua-avs/core/config"
 	"github.com/imua-xyz/imua-avs/types"
-	"log"
 
 	"github.com/urfave/cli"
 )
@@ -58,14 +59,14 @@ func Monitor(ctx *cli.Context) error {
 		case err := <-sub.Err():
 			log.Fatal("Subscription error:", err)
 		case vLog := <-logs:
-			// 解析日志
+			// Parse logs
 			event, err := parseEvent(vLog)
 			if err != nil {
 				log.Printf("Parse error: %v", err)
 				continue
 			}
 
-			// 处理事件
+			// Handle events
 			switch e := event.(type) {
 			case *avs.ContracthelloWorldTaskCreated:
 				fmt.Printf("New Task Created:\n"+

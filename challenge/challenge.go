@@ -3,6 +3,10 @@ package challenge
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"os"
+	"strconv"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -17,9 +21,6 @@ import (
 	chain "github.com/imua-xyz/imua-avs/core/chainio"
 	"github.com/imua-xyz/imua-avs/core/chainio/eth"
 	"github.com/imua-xyz/imua-avs/types"
-	"math/big"
-	"os"
-	"strconv"
 )
 
 const (
@@ -199,7 +200,7 @@ func (o *Challenger) Start(ctx context.Context) error {
 		case vLog := <-logs:
 			event, err := o.parseEvent(vLog)
 			if err != nil {
-				o.logger.Info("Not as expected TaskCreated log ，parse err:", "err", err)
+				o.logger.Info("Not as expected TaskCreated log, parse err:", "err", err)
 			}
 			if event != nil {
 				e := event.(*avs.ContracthelloWorldTaskCreated)

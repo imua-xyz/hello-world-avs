@@ -3,6 +3,11 @@ package operator
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -21,10 +26,6 @@ import (
 	"github.com/imua-xyz/imua-avs/core/chainio/eth"
 	"github.com/imua-xyz/imua-avs/types"
 	blscommon "github.com/prysmaticlabs/prysm/v5/crypto/bls/common"
-	"math/big"
-	"os"
-	"strconv"
-	"time"
 )
 
 const (
@@ -334,7 +335,7 @@ func (o *Operator) Start(ctx context.Context) error {
 		case vLog := <-logs:
 			event, err := o.parseEvent(vLog)
 			if err != nil {
-				o.logger.Info("Not as expected TaskCreated log ，parse err:", "err", err)
+				o.logger.Info("Not as expected TaskCreated log, parse err:", "err", err)
 			}
 			if event != nil {
 				e := event.(*avs.ContracthelloWorldTaskCreated)

@@ -41,7 +41,7 @@ cp build/imuad /usr/bin/imuad
 ./local_node.sh
 ```  
 
-Check Available Accounts  检查可用帐户
+Check Available Accounts  
 
 ```powershell
 imuad keys list --home ~/.tmp-imuad

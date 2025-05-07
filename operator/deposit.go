@@ -5,10 +5,11 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
-	"github.com/imua-xyz/imua-avs/core"
 	"math/big"
 	"strings"
 	"time"
+
+	"github.com/imua-xyz/imua-avs/core"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -21,8 +22,141 @@ import (
 )
 
 const (
-	DepositABI                = `[{"inputs":[{"internalType":"uint32","name":"clientChainID","type":"uint32"},{"internalType":"bytes","name":"assetsAddress","type":"bytes"},{"internalType":"bytes","name":"stakerAddress","type":"bytes"},{"internalType":"uint256","name":"opAmount","type":"uint256"}],"name":"depositLST","outputs":[{"internalType":"bool","name":"success","type":"bool"},{"internalType":"uint256","name":"latestAssetState","type":"uint256"}],"stateMutability":"nonpayable","type":"function"}]`
-	DelegateABI               = `[{"inputs":[{"internalType":"uint32","name":"clientChainID","type":"uint32"},{"internalType":"bytes","name":"staker","type":"bytes"},{"internalType":"bytes","name":"operator","type":"bytes"}],"name":"associateOperatorWithStaker","outputs":[{"internalType":"bool","name":"success","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint32","name":"clientChainID","type":"uint32"},{"internalType":"uint64","name":"lzNonce","type":"uint64"},{"internalType":"bytes","name":"assetsAddress","type":"bytes"},{"internalType":"bytes","name":"stakerAddress","type":"bytes"},{"internalType":"bytes","name":"operatorAddr","type":"bytes"},{"internalType":"uint256","name":"opAmount","type":"uint256"}],"name":"delegate","outputs":[{"internalType":"bool","name":"success","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint32","name":"clientChainID","type":"uint32"},{"internalType":"bytes","name":"staker","type":"bytes"}],"name":"dissociateOperatorFromStaker","outputs":[{"internalType":"bool","name":"success","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint32","name":"clientChainID","type":"uint32"},{"internalType":"uint64","name":"lzNonce","type":"uint64"},{"internalType":"bytes","name":"assetsAddress","type":"bytes"},{"internalType":"bytes","name":"stakerAddress","type":"bytes"},{"internalType":"bytes","name":"operatorAddr","type":"bytes"},{"internalType":"uint256","name":"opAmount","type":"uint256"}],"name":"undelegate","outputs":[{"internalType":"bool","name":"success","type":"bool"}],"stateMutability":"nonpayable","type":"function"}]`
+	DepositABI  = `[{"inputs":[{"internalType":"uint32","name":"clientChainID","type":"uint32"},{"internalType":"bytes","name":"assetsAddress","type":"bytes"},{"internalType":"bytes","name":"stakerAddress","type":"bytes"},{"internalType":"uint256","name":"opAmount","type":"uint256"}],"name":"depositLST","outputs":[{"internalType":"bool","name":"success","type":"bool"},{"internalType":"uint256","name":"latestAssetState","type":"uint256"}],"stateMutability":"nonpayable","type":"function"}]`
+	DelegateABI = `[
+	{
+		"inputs": [
+			{
+				"internalType": "uint32",
+				"name": "clientChainID",
+				"type": "uint32"
+			},
+			{
+				"internalType": "bytes",
+				"name": "staker",
+				"type": "bytes"
+			},
+			{
+				"internalType": "bytes",
+				"name": "operator",
+				"type": "bytes"
+			}
+		],
+		"name": "associateOperatorWithStaker",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "success",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint32",
+				"name": "clientChainID",
+				"type": "uint32"
+			},
+			{
+				"internalType": "bytes",
+				"name": "assetsAddress",
+				"type": "bytes"
+			},
+			{
+				"internalType": "bytes",
+				"name": "stakerAddress",
+				"type": "bytes"
+			},
+			{
+				"internalType": "bytes",
+				"name": "operatorAddr",
+				"type": "bytes"
+			},
+			{
+				"internalType": "uint256",
+				"name": "opAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "delegate",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "success",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint32",
+				"name": "clientChainID",
+				"type": "uint32"
+			},
+			{
+				"internalType": "bytes",
+				"name": "staker",
+				"type": "bytes"
+			}
+		],
+		"name": "dissociateOperatorFromStaker",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "success",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint32",
+				"name": "clientChainID",
+				"type": "uint32"
+			},
+			{
+				"internalType": "bytes",
+				"name": "assetsAddress",
+				"type": "bytes"
+			},
+			{
+				"internalType": "bytes",
+				"name": "stakerAddress",
+				"type": "bytes"
+			},
+			{
+				"internalType": "bytes",
+				"name": "operatorAddr",
+				"type": "bytes"
+			},
+			{
+				"internalType": "uint256",
+				"name": "opAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "undelegate",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "success",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	}
+]`
+	//	DelegateABI               = `[{"inputs":[{"internalType":"uint32","name":"clientChainID","type":"uint32"},{"internalType":"bytes","name":"staker","type":"bytes"},{"internalType":"bytes","name":"operator","type":"bytes"}],"name":"associateOperatorWithStaker","outputs":[{"internalType":"bool","name":"success","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint32","name":"clientChainID","type":"uint32"},{"internalType":"uint64","name":"lzNonce","type":"uint64"},{"internalType":"bytes","name":"assetsAddress","type":"bytes"},{"internalType":"bytes","name":"stakerAddress","type":"bytes"},{"internalType":"bytes","name":"operatorAddr","type":"bytes"},{"internalType":"uint256","name":"opAmount","type":"uint256"}],"name":"delegate","outputs":[{"internalType":"bool","name":"success","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint32","name":"clientChainID","type":"uint32"},{"internalType":"bytes","name":"staker","type":"bytes"}],"name":"dissociateOperatorFromStaker","outputs":[{"internalType":"bool","name":"success","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint32","name":"clientChainID","type":"uint32"},{"internalType":"uint64","name":"lzNonce","type":"uint64"},{"internalType":"bytes","name":"assetsAddress","type":"bytes"},{"internalType":"bytes","name":"stakerAddress","type":"bytes"},{"internalType":"bytes","name":"operatorAddr","type":"bytes"},{"internalType":"uint256","name":"opAmount","type":"uint256"}],"name":"undelegate","outputs":[{"internalType":"bool","name":"success","type":"bool"}],"stateMutability":"nonpayable","type":"function"}]`
 	depositPrecompileAddress  = "0x0000000000000000000000000000000000000804"
 	delegatePrecompileAddress = "0x0000000000000000000000000000000000000805"
 	defaultAssetID            = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
@@ -100,7 +234,7 @@ func delegateTo(rpcUrl, stakerAddress, operatorBench32Str string, amount *big.In
 	stakerAddr := common.HexToAddress(stakerAddress)
 	operatorAddr := []byte(operatorBench32Str)
 	opAmount := amount
-	lzNonce := uint64(0)
+	// lzNonce := uint64(0)
 	_, ethClient, err := connectToEthereum(rpcUrl)
 	if err != nil {
 		return err
@@ -121,7 +255,7 @@ func delegateTo(rpcUrl, stakerAddress, operatorBench32Str string, amount *big.In
 		return err
 	}
 
-	data, err := delegateAbi.Pack("delegate", layerZeroID, lzNonce, paddingAddressTo32(assetAddr), paddingAddressTo32(stakerAddr), operatorAddr, opAmount)
+	data, err := delegateAbi.Pack("delegate", layerZeroID, paddingAddressTo32(assetAddr), paddingAddressTo32(stakerAddr), operatorAddr, opAmount)
 	if err != nil {
 		return err
 	}

@@ -218,13 +218,13 @@ contract AvsServiceContract {
 
         uint256 index = 0;
 
-        // 将第一个数组的元素添加到合并后的数组中
+        // Add elements from the first array to the merged array
         for (uint256 i = 0; i < arr1.length; i++) {
             mergedArray[index] = arr1[i];
             index++;
         }
 
-        // 将第二个数组的元素添加到合并后的数组中
+        // Add elements from the second array to the merged array
         for (uint256 i = 0; i < arr2.length; i++) {
             mergedArray[index] = arr2[i];
             index++;

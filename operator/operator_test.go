@@ -5,6 +5,11 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"log"
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -13,10 +18,6 @@ import (
 	"github.com/imua-xyz/imua-avs/core"
 	"github.com/imua-xyz/imua-avs/core/chainio/eth"
 	"github.com/prysmaticlabs/prysm/v5/crypto/bls/blst"
-	"log"
-	"math/big"
-	"testing"
-	"time"
 )
 
 func TestDecodeRes(t *testing.T) {
@@ -178,7 +179,7 @@ func GetLog(client eth.EthClient, address common.Address, height int64) {
 				"height", height,
 				"event", event.Inputs)
 			if err != nil {
-				fmt.Println("Not as expected log ，parse err:", err)
+				fmt.Println("Not as expected log, parse err:", err)
 				return
 			}
 
