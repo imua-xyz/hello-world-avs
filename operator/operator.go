@@ -406,6 +406,10 @@ func (o *Operator) SendSignedTaskResponseToChain(
 	taskResponsePeriod := taskInfo.TaskResponsePeriod
 	taskStatisticalPeriod := taskInfo.TaskStatisticalPeriod
 
+	// Track submission status for each phase
+	phaseOneSubmitted := false
+	phaseTwoSubmitted := false
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -434,75 +438,70 @@ func (o *Operator) SendSignedTaskResponseToChain(
 
 			switch {
 			case currentEpoch <= startingEpoch:
-				// o.logger.Info("current epoch  is less than starting epoch", "currentEpoch", currentEpoch, "startingEpoch", startingEpoch)
+				o.logger.Info("current epoch is less than or equal to the starting epoch", "currentEpoch", currentEpoch, "startingEpoch", startingEpoch)
+				time.Sleep(retryDelay)
 
 			case currentEpoch <= startingEpoch+taskResponsePeriod:
-				o.logger.Info("Execute Phase One Submission Task", "currentEpoch", currentEpoch,
-					"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod)
-				o.logger.Info("Submitting task response for task response period",
-					"taskAddr", o.avsAddr.String(), "taskId", taskId, "operator-addr", o.operatorAddr)
-				_, err := o.avsWriter.OperatorSubmitTask(
-					ctx,
-					taskId,
-					nil,
-					blsSignature,
-					o.avsAddr.String(),
-					1)
-				if err != nil {
-					o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
-					return "", fmt.Errorf("failed to submit task during taskResponsePeriod: %w", err)
+				if !phaseOneSubmitted {
+					o.logger.Info("Execute Phase One Submission Task", "currentEpoch", currentEpoch,
+						"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod)
+					o.logger.Info("Submitting task response for task response period",
+						"taskAddr", o.avsAddr.String(), "taskId", taskId, "operator-addr", o.operatorAddr)
+					_, err := o.avsWriter.OperatorSubmitTask(
+						ctx,
+						taskId,
+						nil,
+						blsSignature,
+						o.avsAddr.String(),
+						1)
+					if err != nil {
+						o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
+						return "", fmt.Errorf("failed to submit task during taskResponsePeriod: %w", err)
+					}
+					phaseOneSubmitted = true
+					o.logger.Info("Successfully submitted task response for phase one", "taskId", taskId)
+				} else {
+					o.logger.Info("Phase One already submitted", "taskId", taskId)
+					time.Sleep(retryDelay)
 				}
-				// Wait for transaction which operator submit task to be mined
-				//	Avoid err: invalid nonce,invalid sequence,got x, expected y
-				// time.Sleep(2 * time.Second)
 
 			case currentEpoch <= startingEpoch+taskResponsePeriod+taskStatisticalPeriod && currentEpoch > startingEpoch+taskResponsePeriod:
-				o.logger.Info("Execute Phase Two Submission Task", "currentEpoch", currentEpoch,
-					"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod, "taskStatisticalPeriod", taskStatisticalPeriod)
-				o.logger.Info("Submitting task response for statistical period",
-					"taskAddr", o.avsAddr.String(), "taskId", taskId, "operator-addr", o.operatorAddr)
-				_, err := o.avsWriter.OperatorSubmitTask(
-					ctx,
-					taskId,
-					taskResponse,
-					blsSignature,
-					o.avsAddr.String(),
-					2)
-				if err != nil {
-					o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
-					return "", fmt.Errorf("failed to submit task during statistical period: %w", err)
+				if !phaseTwoSubmitted {
+					o.logger.Info("Execute Phase Two Submission Task", "currentEpoch", currentEpoch,
+						"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod, "taskStatisticalPeriod", taskStatisticalPeriod)
+					o.logger.Info("Submitting task response for statistical period",
+						"taskAddr", o.avsAddr.String(), "taskId", taskId, "operator-addr", o.operatorAddr)
+					_, err := o.avsWriter.OperatorSubmitTask(
+						ctx,
+						taskId,
+						taskResponse,
+						blsSignature,
+						o.avsAddr.String(),
+						2)
+					if err != nil {
+						o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
+						return "", fmt.Errorf("failed to submit task during statistical period: %w", err)
+					}
+					phaseTwoSubmitted = true
+					o.logger.Info("Successfully submitted task response for phase two", "taskId", taskId)
+				} else {
+					o.logger.Info("Phase Two already submitted", "taskId", taskId)
+					time.Sleep(retryDelay)
 				}
 
 			default:
 				o.logger.Info("Current epoch is not within expected range", "currentEpoch", currentEpoch)
 				return "", fmt.Errorf("current epoch %d is not within expected range %d", currentEpoch, startingEpoch)
 			}
-			// Disable the uselesss ticker.
-			// // Dynamic sleep based on the epoch identifier
-			// var sleepDuration time.Duration
-			// switch epochIdentifier {
-			// case DayEpochID:
-			// 	sleepDuration = 24 * time.Hour
-			// case HourEpochID:
-			// 	sleepDuration = time.Hour
-			// case MinuteEpochID:
-			// 	sleepDuration = time.Minute
-			// case WeekEpochID:
-			// 	sleepDuration = 7 * 24 * time.Hour
-			// default:
-			// 	o.logger.Info("Unknown epoch identifier", "epochIdentifier", epochIdentifier)
-			// 	sleepDuration = time.Minute // Default to a safe short duration
-			// }
 
-			// // Use a ticker instead of time.Sleep for more control and graceful handling
-			// ticker := time.NewTicker(sleepDuration)
-			// defer ticker.Stop() // Ensure ticker stops even if the function exits early
-			// select {
-			// case <-ticker.C:
-			// 	continue // Proceed to the next iteration
-			// case <-ctx.Done():
-			// 	return "", ctx.Err() // Handle cancellation
-			// }
+			// If both phases are submitted, exit the loop
+			if phaseOneSubmitted && phaseTwoSubmitted {
+				o.logger.Info("Both phases completed successfully", "taskId", taskId)
+				return "Both task response phases completed successfully", nil
+			}
+
+			// Add a small delay to prevent tight looping
+			time.Sleep(retryDelay)
 		}
 	}
 }
