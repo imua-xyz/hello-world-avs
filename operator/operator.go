@@ -438,13 +438,13 @@ func (o *Operator) SendSignedTaskResponseToChain(
 
 			switch {
 			case currentEpoch <= startingEpoch:
-				o.logger.Info("current epoch is less than or equal to the starting epoch", "currentEpoch", currentEpoch, "startingEpoch", startingEpoch)
+				o.logger.Info("current epoch is less than or equal to the starting epoch", "currentEpoch", currentEpoch, "startingEpoch", startingEpoch, "taskId", taskId)
 				time.Sleep(retryDelay)
 
 			case currentEpoch <= startingEpoch+taskResponsePeriod:
 				if !phaseOneSubmitted {
 					o.logger.Info("Execute Phase One Submission Task", "currentEpoch", currentEpoch,
-						"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod)
+						"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod, "taskId", taskId)
 					o.logger.Info("Submitting task response for task response period",
 						"taskAddr", o.avsAddr.String(), "taskId", taskId, "operator-addr", o.operatorAddr)
 					_, err := o.avsWriter.OperatorSubmitTask(
@@ -455,7 +455,7 @@ func (o *Operator) SendSignedTaskResponseToChain(
 						o.avsAddr.String(),
 						1)
 					if err != nil {
-						o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
+						o.logger.Error("Avs failed to OperatorSubmitTask", "err", err, "taskId", taskId)
 						return "", fmt.Errorf("failed to submit task during taskResponsePeriod: %w", err)
 					}
 					phaseOneSubmitted = true
@@ -468,7 +468,7 @@ func (o *Operator) SendSignedTaskResponseToChain(
 			case currentEpoch <= startingEpoch+taskResponsePeriod+taskStatisticalPeriod && currentEpoch > startingEpoch+taskResponsePeriod:
 				if !phaseTwoSubmitted {
 					o.logger.Info("Execute Phase Two Submission Task", "currentEpoch", currentEpoch,
-						"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod, "taskStatisticalPeriod", taskStatisticalPeriod)
+						"startingEpoch", startingEpoch, "taskResponsePeriod", taskResponsePeriod, "taskStatisticalPeriod", taskStatisticalPeriod, "taskId", taskId)
 					o.logger.Info("Submitting task response for statistical period",
 						"taskAddr", o.avsAddr.String(), "taskId", taskId, "operator-addr", o.operatorAddr)
 					_, err := o.avsWriter.OperatorSubmitTask(
@@ -479,7 +479,7 @@ func (o *Operator) SendSignedTaskResponseToChain(
 						o.avsAddr.String(),
 						2)
 					if err != nil {
-						o.logger.Error("Avs failed to OperatorSubmitTask", "err", err)
+						o.logger.Error("Avs failed to OperatorSubmitTask", "err", err, "taskId", taskId)
 						return "", fmt.Errorf("failed to submit task during statistical period: %w", err)
 					}
 					phaseTwoSubmitted = true
@@ -490,7 +490,7 @@ func (o *Operator) SendSignedTaskResponseToChain(
 				}
 
 			default:
-				o.logger.Info("Current epoch is not within expected range", "currentEpoch", currentEpoch)
+				o.logger.Info("Current epoch is not within expected range", "currentEpoch", currentEpoch, "taskId", taskId)
 				return "", fmt.Errorf("current epoch %d is not within expected range %d", currentEpoch, startingEpoch)
 			}
 
