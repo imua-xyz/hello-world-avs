@@ -56,6 +56,11 @@ contract AvsServiceContract {
         _;
     }
 
+    modifier onlyAuthorizedChallenger() {
+        require(isOperator(msg.sender) || msg.sender == owner, "Not authorized to challenge");
+        _;
+    }
+
     function registerAVS(
         avs.AVSParams calldata params
     ) public returns (bool) {
@@ -162,7 +167,7 @@ contract AvsServiceContract {
 
     function raiseAndResolveChallenge(
         ChallengeReq memory req
-    ) public returns (bool) {
+    ) public onlyAuthorizedChallenger returns (bool) {
 
         uint64 taskID = req.taskId;
         require(req.infos.length>0, "taskResponse length must be greater than 0");
