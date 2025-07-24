@@ -378,6 +378,8 @@ func (o *Operator) ProcessNewTaskCreatedLog(e *avs.ContracthelloWorldTaskCreated
 		TaskID:        e.TaskId.Uint64(),
 		NumberSquared: e.NumberToBeSquared * e.NumberToBeSquared,
 	}
+	o.logger.Info("New Task Processed", "TaskResult", taskResponse.NumberSquared, "TaskID", e.TaskId.Uint64(),
+		"Issuer", e.Issuer.String(), "Name", e.Name, "NumberToBeSquared", e.NumberToBeSquared)
 	return taskResponse
 }
 
